@@ -33,6 +33,9 @@ jobs:
       - name: Create .nojekyll file
         run: touch ./trade_timeline_viz/build/.nojekyll
 
+      - name: Copy index.html to 404.html
+        run: cp ./trade_timeline_viz/build/index.html ./trade_timeline_viz/build/404.html
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
