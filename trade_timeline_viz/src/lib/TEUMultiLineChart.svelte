@@ -20,14 +20,8 @@
 
 	const dateExtent = $derived(d3.extent(data, (d) => d.date) as [Date, Date]);
 
-	function getCurrentDate(dateExtent: [Date, Date], progress: number) {
-		if (!dateExtent[0] || !dateExtent[1]) return new Date();
-		const timeScale = d3.scaleTime().domain(dateExtent).range([0, 100]);
-		return timeScale.invert(progress);
-	}
-
-	const currentDate = $derived(getCurrentDate(dateExtent, progress));
-	const visibleData = $derived(data.filter((d) => d.date <= currentDate));
+	// Static display: show all data without animation
+	const visibleData = $derived(data);
 
 	const xScale = $derived(
 		d3.scaleTime().domain(dateExtent).range([usableArea.left, usableArea.right])
