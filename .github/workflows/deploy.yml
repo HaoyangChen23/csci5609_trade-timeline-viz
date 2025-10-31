@@ -30,6 +30,9 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Create .nojekyll file
+        run: touch ./trade_timeline_viz/build/.nojekyll
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
@@ -41,5 +44,3 @@ jobs:
           commit_message: 'Deploy to GitHub Pages'
           full_commit_message: 'Deploy to GitHub Pages'
           allow_empty_commit: true
-          # Add a .nojekyll file to disable Jekyll processing on GitHub Pages
-          no_jekyll: true
