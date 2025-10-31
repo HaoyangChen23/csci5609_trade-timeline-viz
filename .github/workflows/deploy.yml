@@ -5,9 +5,23 @@ on:
     branches:
       - main # Trigger the workflow on pushes to the main branch
 
+# Set permissions for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
       - name: Checkout repository
@@ -30,6 +44,9 @@ jobs:
         env:
           NODE_ENV: production
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
       - name: Create .nojekyll file
         run: touch ./trade_timeline_viz/build/.nojekyll
 
@@ -46,14 +63,11 @@ jobs:
       - name: Copy index.html to 404.html
         run: cp ./trade_timeline_viz/build/index.html ./trade_timeline_viz/build/404.html
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./trade_timeline_viz/build
-          cname: ''
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
-          commit_message: 'Deploy to GitHub Pages'
-          full_commit_message: 'Deploy to GitHub Pages'
-          allow_empty_commit: true
+          path: ./trade_timeline_viz/build
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
