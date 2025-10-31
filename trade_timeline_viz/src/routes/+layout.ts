@@ -1,3 +1,3 @@
-// This ensures that the entire app is treated as a single-page application (SPA),
-// which is necessary for correct routing on services like GitHub Pages.
-export const prerender = false;
+// Enable prerendering for static site generation
+// This allows SvelteKit to generate static HTML files for all routes at build time
+export const prerender = true;

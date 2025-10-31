@@ -6,9 +6,3 @@ export {LineChart}
 
 import Scroll from './Scroll.svelte'
 export {Scroll}
-
-import PMILineChart from './PMILineChart.svelte'
-export {PMILineChart}
-
-import TEUMultiLineChart from './TEUMultiLineChart.svelte'
-export {TEUMultiLineChart}
