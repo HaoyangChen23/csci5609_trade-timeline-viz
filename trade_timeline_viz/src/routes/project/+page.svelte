@@ -10,7 +10,9 @@
 	// Function to load the tariff CSV
 	async function loadTariffCsv() {
 		try {
-			const csvUrl = '/CSCI5609_Project_Dataset - Sheet1.csv';
+			// Use relative path that works in both dev and production
+			const base = import.meta.env.BASE_URL || '';
+			const csvUrl = `${base}CSCI5609_Project_Dataset - Sheet1.csv`;
 			tariffs = await d3.csv(csvUrl, (row) => {
 				const dateStr = row.Date;
 				let parsedDate: Date;
