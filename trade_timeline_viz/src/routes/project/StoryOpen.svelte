@@ -1,12 +1,7 @@
 <script lang="ts">
   import { Scroll } from "$lib";
 
-  import { slide, fly } from "svelte/transition";
-
-  type Props = {
-    movieNum: number;
-  };
-  let { movieNum }: Props = $props();
+  import { fly } from "svelte/transition";
 
   let progress: number = $state(0);
 </script>
