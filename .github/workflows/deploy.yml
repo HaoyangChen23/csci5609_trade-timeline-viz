@@ -33,6 +33,11 @@ jobs:
       - name: Create .nojekyll file
         run: touch ./trade_timeline_viz/build/.nojekyll
 
+      - name: Create project directory and move project.html
+        run: |
+          mkdir -p ./trade_timeline_viz/build/project
+          cp ./trade_timeline_viz/build/project.html ./trade_timeline_viz/build/project/index.html || true
+
       - name: Copy index.html to 404.html
         run: cp ./trade_timeline_viz/build/index.html ./trade_timeline_viz/build/404.html
 
