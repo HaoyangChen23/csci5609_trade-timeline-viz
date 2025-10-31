@@ -1,15 +1,16 @@
 <script lang="ts">
-  import type { TTariff, TPMI, TTEU } from "../../types";
+  import type { TTariff, TPMI, TTEU, AutoIncome } from "../../types";
 
   // define the props of this component
   type Props = {
     tariffs: TTariff[];
     pmiData: TPMI[];
     teuData: TTEU[];
+    incomeData: AutoIncome[];
   };
-  let { tariffs, pmiData, teuData }: Props = $props();
+  let { tariffs, pmiData, teuData, incomeData }: Props = $props();
 
-  import { Scroll, LineChart, PMILineChart, TEUMultiLineChart } from "$lib";
+  import { Scroll, LineChart, PMILineChart, TEUMultiLineChart, AutoIncomeBarChart } from "$lib";
   import * as d3 from "d3";
 
   let myProgress = $state(0); // reactive variable for tracking the progress of the scrollytelling
@@ -108,6 +109,26 @@
   </div>
 </Scroll>
 
+<!--Auto Income Section -->
+<div class="section-divider"></div>
+<h2>Tariff Impact on Automaker Operating Income</h2>
+<p>
+  The trade war had a direct and measurable effect on automaker profits.
+</p>
+
+<Scroll bind:progress={myProgress}>
+  <div class="info-section">
+    <h3>Key Insight</h3>
+    <p>
+      By stacking the negative tariff impact (in red) on top of the actual
+      operating income (in grey), we can visualize the potential income lost.
+    </p>
+  </div>
+
+  <div slot="viz">
+    <AutoIncomeBarChart data={incomeData} height={chartHeight} width={900} />
+  </div>
+</Scroll>
 <style>
   .tariff-event {
     margin-bottom: 30px;
@@ -169,4 +190,5 @@
     line-height: 1.6;
     margin-bottom: 0;
   }
+
 </style>

@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import * as d3 from "d3";
-  import type { TTariff, TPMI, TTEU } from "../../types";
+  import type { TTariff, TPMI, TTEU, AutoIncome } from "../../types";
   import StoryOpen from "./StoryOpen.svelte";
   import Scrolly2D from "./Scrolly2D.svelte";
 
   let tariffs: TTariff[] = $state([]);
   let pmiData: TPMI[] = $state([]);
   let teuData: TTEU[] = $state([]);
+  let incomeData: AutoIncome[] = $state([]);
 
   // Function to load the tariff CSV
   async function loadTariffCsv() {
@@ -128,16 +129,29 @@
       console.error('Error loading TEU data:', error);
     }
   }
-
-  // Call the loaders when the component mounts
+  async function loadIncomeData() {
+    try {
+      const base = import.meta.env.BASE_URL || '';
+      const csvUrl = `${base}data/auto_operating_income_demo.csv`;
+      incomeData = await d3.csv(csvUrl, (row) => ({
+        company: row['company'],
+        quarter: row['quarter'],
+        operatingIncome: Number(row['operating_income_usd_millions']),
+        tariffImpact: Number(row['tariff_fx_impact_usd_millions'])
+      }));
+      incomeData = [...incomeData];
+    } catch (error) {
+      console.error('Error loading income data:', error);
+    }
+  }
   onMount(async () => {
-    await Promise.all([loadTariffCsv(), loadPMIData(), loadTEUData()]);
+    await Promise.all([loadTariffCsv(), loadPMIData(), loadTEUData(), loadIncomeData()]);
   });
 </script>
 
 <div class="container">
   <StoryOpen />
-  <Scrolly2D {tariffs} {pmiData} {teuData} />
+  <Scrolly2D {tariffs} {pmiData} {teuData} {incomeData}/>
 </div>
 
 <style>

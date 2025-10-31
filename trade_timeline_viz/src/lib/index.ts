@@ -12,3 +12,6 @@ export {PMILineChart}
 
 import TEUMultiLineChart from './TEUMultiLineChart.svelte'
 export {TEUMultiLineChart}
+
+import AutoIncomeBarChart from './AutoIncomeBarChart.svelte'
+export {AutoIncomeBarChart}

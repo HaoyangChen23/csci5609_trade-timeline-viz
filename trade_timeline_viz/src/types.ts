@@ -21,3 +21,10 @@ export type TTEU = {
     losAngeles: number;
     nyNj: number;
 }
+
+export type AutoIncome = {
+  quarter: string; 
+  company: string; 
+  operatingIncome: number;
+  tariffImpact: number; 
+};

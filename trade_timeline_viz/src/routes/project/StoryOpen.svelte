@@ -21,7 +21,7 @@
             delay: 200,
           }}
         >
-          [Placeholder: Explore the evolution of US-China trade relations from 2018 to 2025 through interactive data visualizations]
+          [Explore the evolution of US-China trade relations from 2018 to 2025 through interactive data visualizations]
         </p>
       {/if}
 
@@ -31,7 +31,7 @@
           y: 50,
           delay: 300,
         }}>
-          [Placeholder: Scroll to discover how tariffs shaped global commerce]
+          [Scroll to discover how tariffs shaped global commerce]
         </p>
       {/if}
     </div>
