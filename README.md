@@ -12,6 +12,7 @@ The current implementation includes the following interactive visualizations int
 1.  **US-China Tariff Timeline**: A multi-line chart showing the escalation of tariff rates between the US, China, and the Rest of the World (ROW) from 2018 to 2025.
 2.  **Manufacturing Contraction (ISM PMI)**: A line chart visualizing the drop in the ISM Manufacturing PMI below the 50-point contraction threshold following the tariff announcement.
 3.  **Port Front-Loading Effect (TEU)**: A multi-line chart demonstrating the surge in container throughput at major U.S. ports just before the tariffs took effect.
+4.  **Tariff Imapct on Automaker Operating Income**: A bar chart demonstrating the trade war/ tariff impact on automaker profits.
 
 ## 💻 Tech Stack
 
