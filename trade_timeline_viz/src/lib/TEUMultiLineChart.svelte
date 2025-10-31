@@ -20,7 +20,8 @@
 
 	const dateExtent = $derived(d3.extent(data, (d) => d.date) as [Date, Date]);
 
-	// Static display: show all data without animation
+	// Static display: always show all data
+	const currentDate = $derived(dateExtent[1] || new Date());
 	const visibleData = $derived(data);
 
 	const xScale = $derived(
