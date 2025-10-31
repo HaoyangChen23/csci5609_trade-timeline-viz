@@ -37,6 +37,9 @@ jobs:
         run: |
           mkdir -p ./trade_timeline_viz/build/project
           cp ./trade_timeline_viz/build/project.html ./trade_timeline_viz/build/project/index.html || true
+          # Fix relative paths in project/index.html to use absolute paths
+          sed -i 's|href="./_app|href="/csci5609_trade-timeline-viz/_app|g' ./trade_timeline_viz/build/project/index.html
+          sed -i 's|src="./_app|src="/csci5609_trade-timeline-viz/_app|g' ./trade_timeline_viz/build/project/index.html
 
       - name: Copy index.html to 404.html
         run: cp ./trade_timeline_viz/build/index.html ./trade_timeline_viz/build/404.html
