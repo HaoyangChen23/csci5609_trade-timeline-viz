@@ -23,8 +23,17 @@ export type TTEU = {
 }
 
 export type AutoIncome = {
-  quarter: string; 
-  company: string; 
+  quarter: string;
+  company: string;
   operatingIncome: number;
-  tariffImpact: number; 
+  tariffImpact: number;
+};
+
+export type TariffData = {
+  Country_ISO3: string;
+  Country: string;
+  Development_Status: string;
+  Current_tariff_total: number;
+  Pre2025_tariff_total: number;
+  Imports_total: number;
 };

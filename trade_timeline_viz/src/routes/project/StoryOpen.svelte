@@ -1,15 +1,15 @@
 <script lang="ts">
   import { Scroll } from "$lib";
-
   import { fly } from "svelte/transition";
 
-
   let progress: number = $state(0);
+  const basePath = import.meta.env.BASE_URL || '';
 </script>
 
-<Scroll bind:progress --scrolly-story-width="0">
-  <div id="virtual"></div>
-  <div slot="viz" class="header">
+<div class="story-open-wrapper">
+  <Scroll bind:progress --scrolly-story-width="0">
+    <div id="virtual"></div>
+    <div slot="viz" class="header" style="--bg-image: url('{basePath}Story_open.jpg')">
     <div class="content-overlay">
       <h1>The Trade War Timeline</h1>
 
@@ -36,13 +36,20 @@
       {/if}
     </div>
   </div>
-</Scroll>
+  </Scroll>
+</div>
 
 <!-- <svelte:window bind:scrollY={progress} /> -->
 
 <style>
+  .story-open-wrapper :global(.scrolly) {
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
   .header {
-    background-image: url('/Story_open.jpg');
+    background-image: var(--bg-image);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -54,8 +61,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-left: calc(-50vw + 50%);
-    margin-right: calc(-50vw + 50%);
+    margin: 0;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    box-sizing: border-box;
   }
 
   .content-overlay {

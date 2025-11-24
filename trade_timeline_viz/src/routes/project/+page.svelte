@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import * as d3 from "d3";
-  import type { TTariff, TPMI, TTEU, AutoIncome } from "../../types";
+  import type { TTariff, TPMI, TTEU, AutoIncome, TariffData } from "../../types";
   import StoryOpen from "./StoryOpen.svelte";
   import Scrolly2D from "./Scrolly2D.svelte";
 
@@ -9,6 +9,7 @@
   let pmiData: TPMI[] = $state([]);
   let teuData: TTEU[] = $state([]);
   let incomeData: AutoIncome[] = $state([]);
+  let globalTariffData: TariffData[] = $state([]);
 
   // Function to load the tariff CSV
   async function loadTariffCsv() {
@@ -144,21 +145,60 @@
       console.error('Error loading income data:', error);
     }
   }
+
+  async function loadGlobalTariffData() {
+    try {
+      const base = import.meta.env.BASE_URL || '';
+      const csvUrl = `${base}2024_2025_US_tariff_global.csv`;
+      globalTariffData = await d3.csv(csvUrl, (row) => ({
+        Country_ISO3: row['Country_ISO3'] || '',
+        Country: row['Country'] || '',
+        Development_Status: row['Development_Status'] || '',
+        Current_tariff_total: Number(row['Current_tariff_total']) || 0,
+        Pre2025_tariff_total: Number(row['Pre2025_tariff_total']) || 0,
+        Imports_total: Number(row['Imports_total']) || 0
+      }));
+      globalTariffData = [...globalTariffData];
+    } catch (error) {
+      console.error('Error loading global tariff data:', error);
+    }
+  }
   onMount(async () => {
-    await Promise.all([loadTariffCsv(), loadPMIData(), loadTEUData(), loadIncomeData()]);
+    await Promise.all([
+      loadTariffCsv(),
+      loadPMIData(),
+      loadTEUData(),
+      loadIncomeData(),
+      loadGlobalTariffData()
+    ]);
   });
 </script>
 
-<div class="container">
+<div class="page-wrapper">
   <StoryOpen />
-  <Scrolly2D {tariffs} {pmiData} {teuData} {incomeData}/>
+  <div class="container">
+    <Scrolly2D {tariffs} {pmiData} {teuData} {incomeData} {globalTariffData}/>
+  </div>
 </div>
 
 <style>
+  :global(body) {
+    margin: 0;
+    padding: 0;
+  }
+
+  .page-wrapper {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: clip; /* Use clip instead of hidden to allow sticky */
+  }
+
   .container {
     width: 80vw;
-    margin: 10px auto;
+    max-width: 100%;
+    margin: 0 auto;
     padding: 10px;
-    align-content: center;
+    box-sizing: border-box;
   }
 </style>

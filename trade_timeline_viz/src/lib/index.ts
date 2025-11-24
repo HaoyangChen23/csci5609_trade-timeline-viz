@@ -15,3 +15,6 @@ export {TEUMultiLineChart}
 
 import AutoIncomeBarChart from './AutoIncomeBarChart.svelte'
 export {AutoIncomeBarChart}
+
+import GlobeTariffViz from './GlobeTariffViz.svelte'
+export {GlobeTariffViz}

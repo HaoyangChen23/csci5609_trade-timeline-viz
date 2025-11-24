@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { TTariff, TPMI, TTEU, AutoIncome } from "../../types";
+  import type { TTariff, TPMI, TTEU, AutoIncome, TariffData } from "../../types";
 
   // define the props of this component
   type Props = {
@@ -7,10 +7,11 @@
     pmiData: TPMI[];
     teuData: TTEU[];
     incomeData: AutoIncome[];
+    globalTariffData: TariffData[];
   };
-  let { tariffs, pmiData, teuData, incomeData }: Props = $props();
+  let { tariffs, pmiData, teuData, incomeData, globalTariffData }: Props = $props();
 
-  import { Scroll, LineChart, PMILineChart, TEUMultiLineChart, AutoIncomeBarChart } from "$lib";
+  import { Scroll, LineChart, PMILineChart, TEUMultiLineChart, AutoIncomeBarChart, GlobeTariffViz } from "$lib";
   import * as d3 from "d3";
 
   let myProgress = $state(0); // reactive variable for tracking the progress of the scrollytelling
@@ -29,6 +30,7 @@
   );
 
   const chartHeight = 500;
+  const chartWidth = 900;
 </script>
 
 <h2>US-China Trade Timeline Visualization</h2>
@@ -60,8 +62,8 @@
   {/each}
 
   <!-- visualization here, indicated by slot='viz' -->
-  <div slot="viz">
-    <LineChart {tariffs} progress={myProgress} height={chartHeight} width={900} />
+  <div slot="viz" class="chart-container">
+    <LineChart {tariffs} progress={myProgress} height={chartHeight} width={chartWidth} />
   </div>
 </Scroll>
 
@@ -82,8 +84,8 @@
     </p>
   </div>
 
-  <div slot="viz">
-    <PMILineChart data={pmiData} progress={myProgress} height={chartHeight} width={900} />
+  <div slot="viz" class="chart-container">
+    <PMILineChart data={pmiData} progress={myProgress} height={chartHeight} width={chartWidth} />
   </div>
 </Scroll>
 
@@ -104,8 +106,8 @@
     </p>
   </div>
 
-  <div slot="viz">
-    <TEUMultiLineChart data={teuData} progress={myProgress} height={chartHeight} width={900} />
+  <div slot="viz" class="chart-container">
+    <TEUMultiLineChart data={teuData} progress={myProgress} height={chartHeight} width={chartWidth} />
   </div>
 </Scroll>
 
@@ -125,10 +127,36 @@
     </p>
   </div>
 
-  <div slot="viz">
-    <AutoIncomeBarChart data={incomeData} height={chartHeight} width={900} />
+  <div slot="viz" class="chart-container">
+    <AutoIncomeBarChart data={incomeData} height={chartHeight} width={chartWidth} />
   </div>
 </Scroll>
+
+<!-- Global Tariff Map Section -->
+<div class="section-divider"></div>
+<h2>Global Tariff Impact: 3D World View</h2>
+<p>
+  Explore US tariff rates across the world in an interactive 3D globe. Taller bars represent higher tariff rates.
+</p>
+
+<div class="globe-section">
+  <div class="info-section">
+    <h3>Key Insight</h3>
+    <p>
+      Toggle between Pre-2025 and Current (2025) tariff rates to see how US trade policy has evolved.
+      The height and color of each bar represents the total tariff rate applied to imports from that country.
+      Drag to rotate the globe and zoom with your scroll wheel.
+    </p>
+  </div>
+  <div class="globe-wrapper">
+    {#if globalTariffData.length > 0}
+      <GlobeTariffViz data={globalTariffData} height={600} width={900} />
+    {:else}
+      <div class="loading">Loading global tariff data...</div>
+    {/if}
+  </div>
+</div>
+
 <style>
   .tariff-event {
     margin-bottom: 30px;
@@ -189,6 +217,32 @@
     color: #555;
     line-height: 1.6;
     margin-bottom: 0;
+  }
+
+  .chart-container {
+    width: 100%;
+    max-width: 900px;
+    margin-left: 40px; /* Adjust this value to move charts more/less to the right */
+  }
+
+  .globe-section {
+    margin: 40px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .globe-wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 60px;
+    font-size: 18px;
+    color: #666;
   }
 
 </style>
