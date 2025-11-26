@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { TTariff, TPMI, TTEU, AutoIncome, TariffData } from "../../types";
+  import type { TTariff, TPMI, TTEU, AutoIncome, TariffData, TradeBalance, TimelineData } from "../../types";
 
   // define the props of this component
   type Props = {
@@ -8,13 +8,24 @@
     teuData: TTEU[];
     incomeData: AutoIncome[];
     globalTariffData: TariffData[];
+    tradeBalanceData: TradeBalance[];
+    timelineData: TimelineData[];
   };
-  let { tariffs, pmiData, teuData, incomeData, globalTariffData }: Props = $props();
+  let { tariffs, pmiData, teuData, incomeData, globalTariffData, tradeBalanceData, timelineData }: Props = $props();
 
-  import { Scroll, LineChart, PMILineChart, TEUMultiLineChart, AutoIncomeBarChart, GlobeTariffViz } from "$lib";
+  import { Scroll, RulerTimeline, TariffRatesChart, PortTEUChart, ManufacturingPMIChart, AutoIncomeBarChart, GlobeTariffViz, TradeBalanceChart, PMILineChart, TEUMultiLineChart } from "$lib";
   import * as d3 from "d3";
 
-  let myProgress = $state(0); // reactive variable for tracking the progress of the scrollytelling
+  // Separate progress variables for each scroll section to prevent conflicts
+  let timelineProgress = $state(0.01); // Main timeline section
+  let tradeBalanceProgress = $state(0); // Trade balance section
+  let autoIncomeProgress = $state(0); // Auto income section
+
+  // Debug: Log when timelineData changes
+  $effect(() => {
+    console.log('timelineData in Scrolly2D:', timelineData.length, 'items');
+    console.log('timelineProgress:', timelineProgress);
+  });
 
   // Set initial progress to show data before 2025
   let dateRange = $derived(d3.extent(tariffs.map((d) => d.date)) as [Date, Date]);
@@ -33,81 +44,57 @@
   const chartWidth = 900;
 </script>
 
-<h2>US-China Trade Timeline Visualization</h2>
+<h2>Interactive Trade Timeline & Visualizations (2024-2025)</h2>
 <p>
-  Explore the evolution of tariff rates between the US, China, and the rest of the world (ROW)
-  from 2018 to 2025. Scroll down to see how tariffs changed over time with each significant
-  trade action.
+  Explore the comprehensive timeline of trade events and their impacts on tariff rates, port activity,
+  and manufacturing. Scroll through to see how events unfold chronologically with synchronized visualizations.
 </p>
 
-<Scroll bind:progress={myProgress}>
-  <!-- the above Scroll component also accept variables such as
-  --scrolly-story-width="600px"
-  --scrolly-layout="viz-first"
-  you can see the comment in lib/Scroll.svelte for more details
--->
+<!-- Main Scrollytelling Section with Timeline and Visualizations -->
+{#if timelineData.length > 0}
+  <Scroll bind:progress={timelineProgress}>
+    <!-- Timeline Story (Left side) -->
+    <RulerTimeline data={timelineData} progress={timelineProgress} />
 
-  <!-- Story here - Display tariff events -->
-  {#each significantEvents as tariff}
-    <div class="tariff-event">
-      <h3 class="date">{d3.timeFormat("%B %d, %Y")(tariff.date)}</h3>
-      <p class="tariff-action">{tariff.tariff_action}</p>
-      <div class="tariff-rates">
-        <p><strong>Chinese tariffs on US exports:</strong> {tariff.chinese_tariffs_us.toFixed(1)}%</p>
-        <p><strong>US tariffs on Chinese exports:</strong> {tariff.us_tariffs_chinese.toFixed(1)}%</p>
-        <p><strong>Chinese tariffs on ROW exports:</strong> {tariff.chinese_tariffs_row.toFixed(1)}%</p>
-        <p><strong>US tariffs on ROW exports:</strong> {tariff.us_tariffs_row.toFixed(1)}%</p>
+    <!-- Visualizations (Right side) -->
+    <div slot="viz" class="visualizations-stack">
+      <div class="chart-wrapper">
+        <TariffRatesChart data={timelineData} progress={timelineProgress} height={chartHeight} width={chartWidth} />
+      </div>
+
+      <div class="chart-wrapper">
+        <PortTEUChart data={timelineData} progress={timelineProgress} height={chartHeight} width={chartWidth} />
+      </div>
+
+      <div class="chart-wrapper">
+        <ManufacturingPMIChart data={timelineData} progress={timelineProgress} height={chartHeight} width={chartWidth} />
       </div>
     </div>
-  {/each}
+  </Scroll>
+{:else}
+  <div class="loading">Loading timeline data...</div>
+{/if}
 
-  <!-- visualization here, indicated by slot='viz' -->
-  <div slot="viz" class="chart-container">
-    <LineChart {tariffs} progress={myProgress} height={chartHeight} width={chartWidth} />
-  </div>
-</Scroll>
-
-<!-- PMI Section -->
+<!-- Trade Balance Section -->
 <div class="section-divider"></div>
-
-<h2>Manufacturing Contraction After Tariff Announcement</h2>
+<h2>U.S. Trade Balance Trends (2024-2025)</h2>
 <p>
-  The ISM Manufacturing PMI dropped below the critical 50-point threshold following the tariff announcement in August 2025, signaling a contraction in the manufacturing sector.
+  The trade balance shows the difference between exports and imports, measured in hundreds of millions of dollars.
+  Negative values indicate a trade deficit, where the U.S. imports more than it exports.
 </p>
 
-<Scroll bind:progress={myProgress}>
+<Scroll bind:progress={tradeBalanceProgress}>
   <div class="info-section">
     <h3>Key Insight</h3>
     <p>
-      Manufacturing PMI (Purchasing Managers' Index) is a key economic indicator. A value above 50 indicates expansion, 
-      while below 50 indicates contraction. The tariff announcement in August 2025 coincided with a sharp drop below this threshold.
+      The U.S. trade deficit spiked dramatically in Q1 2025 to -4,255 (hundreds of millions USD),
+      coinciding with the tariff announcement. However, the deficit improved significantly in Q2 and Q3 2025,
+      suggesting a shift in trade patterns and potential effectiveness of trade policy adjustments.
     </p>
   </div>
 
   <div slot="viz" class="chart-container">
-    <PMILineChart data={pmiData} progress={myProgress} height={chartHeight} width={chartWidth} />
-  </div>
-</Scroll>
-
-<!-- TEU Section -->
-<div class="section-divider"></div>
-
-<h2>Front-loading Effect at U.S. Ports</h2>
-<p>
-  Container throughput surged at major U.S. ports before the tariff effective date, as importers rushed to bring goods in before tariffs took effect.
-</p>
-
-<Scroll bind:progress={myProgress}>
-  <div class="info-section">
-    <h3>Key Insight</h3>
-    <p>
-      TEU (Twenty-foot Equivalent Unit) measures container volume. The front-loading effect shows how businesses anticipated 
-      the tariff implementation by increasing imports in the months leading up to the effective date.
-    </p>
-  </div>
-
-  <div slot="viz" class="chart-container">
-    <TEUMultiLineChart data={teuData} progress={myProgress} height={chartHeight} width={chartWidth} />
+    <TradeBalanceChart data={tradeBalanceData} height={chartHeight} width={chartWidth} />
   </div>
 </Scroll>
 
@@ -118,7 +105,7 @@
   The trade war had a direct and measurable effect on automaker profits.
 </p>
 
-<Scroll bind:progress={myProgress}>
+<Scroll bind:progress={autoIncomeProgress}>
   <div class="info-section">
     <h3>Key Insight</h3>
     <p>
@@ -158,39 +145,31 @@
 </div>
 
 <style>
-  .tariff-event {
-    margin-bottom: 30px;
-    padding: 15px;
-    background-color: #f9f9f9;
-    border-left: 4px solid #4169E1;
-    border-radius: 4px;
+  h2 {
+    margin-top: 40px;
+    margin-bottom: 15px;
+    color: #2c3e50;
+    font-size: 28px;
+    font-weight: 700;
   }
 
-  .date {
-    color: #333;
-    font-size: 1.2em;
-    margin-bottom: 10px;
-    margin-top: 0;
-  }
-
-  .tariff-action {
+  p {
     color: #555;
-    font-size: 1em;
     line-height: 1.6;
-    margin-bottom: 10px;
+    margin-bottom: 30px;
+    font-size: 16px;
   }
 
-  .tariff-rates {
-    font-size: 0.9em;
-    color: #666;
+  .visualizations-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 60px;
+    width: 100%;
   }
 
-  .tariff-rates p {
-    margin: 5px 0;
-  }
-
-  .tariff-rates strong {
-    color: #333;
+  .chart-wrapper {
+    width: 100%;
+    max-width: 900px;
   }
 
   .section-divider {
@@ -222,7 +201,7 @@
   .chart-container {
     width: 100%;
     max-width: 900px;
-    margin-left: 40px; /* Adjust this value to move charts more/less to the right */
+    margin-left: 40px;
   }
 
   .globe-section {
@@ -244,5 +223,4 @@
     font-size: 18px;
     color: #666;
   }
-
 </style>

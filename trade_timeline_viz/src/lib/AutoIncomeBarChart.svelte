@@ -136,17 +136,21 @@
         <text
             class="axis-label"
             transform="rotate(-90)"
-            y={margin.left - 45}
+            y={15}
             x={-(usableArea.top + usableArea.bottom) / 2}
-            dy="1em"
+            text-anchor="middle"
+            font-size="14"
+            font-weight="600"
         >
-            USD Millions
+            Operating Income (USD Millions)
         </text>
         <text
             class="axis-label"
-            y={height - 15}
+            y={height - 10}
             x={(usableArea.left + usableArea.right) / 2}
             text-anchor="middle"
+            font-size="14"
+            font-weight="600"
         >
             Company
         </text>

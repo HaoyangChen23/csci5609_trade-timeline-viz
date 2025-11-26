@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import * as d3 from "d3";
-  import type { TTariff, TPMI, TTEU, AutoIncome, TariffData } from "../../types";
+  import type { TTariff, TPMI, TTEU, AutoIncome, TariffData, TradeBalance, TimelineEvent, TimelineData } from "../../types";
   import StoryOpen from "./StoryOpen.svelte";
   import Scrolly2D from "./Scrolly2D.svelte";
 
@@ -10,6 +10,8 @@
   let teuData: TTEU[] = $state([]);
   let incomeData: AutoIncome[] = $state([]);
   let globalTariffData: TariffData[] = $state([]);
+  let tradeBalanceData: TradeBalance[] = $state([]);
+  let timelineData: TimelineData[] = $state([]);
 
   // Function to load the tariff CSV
   async function loadTariffCsv() {
@@ -80,51 +82,52 @@
     }
   }
 
-  // Function to load TEU data (format is unusual - no separators in header or data)
+  // Function to load TEU data (tab-separated format)
   async function loadTEUData() {
     try {
       const base = import.meta.env.BASE_URL || '';
-      const csvUrl = `${base}data/Monthly TEU.csv`;
+      const csvUrl = `${base}data/Monthly TEU Fixed.csv`;
       const response = await fetch(csvUrl);
       const text = await response.text();
       const lines = text.trim().split('\n');
-      
-      // The header is: "dateLong_Beach_CALos_Angeles_CANY&NJ"
-      // Data format: "2025-07901845958355794268" (date + 3 numbers concatenated)
-      const dataLines = lines.slice(1);
+
+      // Header: "date\tLong_Beach\tCALos_Angeles\tCANY&NJ"
+      // Data format: "2025-08\t901845\t958355\tNone" (tab-separated)
+      const dataLines = lines.slice(1); // Skip header
       teuData = dataLines
         .map((line) => {
           const lineTrimmed = line.trim();
           if (!lineTrimmed) return null;
-          
-          // Find where the date ends (format: "YYYY-MM")
-          const dateMatch = lineTrimmed.match(/^(\d{4}-\d{2})/);
-          if (!dateMatch) return null;
-          
-          const dateStr = dateMatch[1];
+
+          // Split by tab character
+          const parts = lineTrimmed.split('\t');
+          if (parts.length < 4) return null;
+
+          const dateStr = parts[0];
           const [year, month] = dateStr.split('-');
           const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-          
-          // Extract numbers after date (they're concatenated)
-          const numbersPart = lineTrimmed.substring(dateStr.length);
-          
-          // Try to split the numbers - they appear to be roughly equal length
-          // Based on the data, each number seems to be around 7-8 digits
-          const numLength = Math.floor(numbersPart.length / 3);
-          const longBeach = Number(numbersPart.substring(0, numLength));
-          const losAngeles = Number(numbersPart.substring(numLength, numLength * 2));
-          const nyNj = Number(numbersPart.substring(numLength * 2));
-          
+
+          // Parse values, treating "None" as null (no data point will be shown)
+          const parseValue = (val: string) => {
+            if (val === 'None' || val === 'null' || val === '') return null;
+            const num = Number(val);
+            return isNaN(num) ? null : num;
+          };
+
+          const longBeach = parseValue(parts[1]);
+          const losAngeles = parseValue(parts[2]);
+          const nyNj = parseValue(parts[3]);
+
           return {
             date,
-            longBeach: longBeach || 0,
-            losAngeles: losAngeles || 0,
-            nyNj: nyNj || 0
+            longBeach,
+            losAngeles,
+            nyNj
           };
         })
         .filter((d): d is TTEU => d !== null)
         .reverse(); // Reverse to show chronological order
-      
+
       teuData = [...teuData];
     } catch (error) {
       console.error('Error loading TEU data:', error);
@@ -163,13 +166,57 @@
       console.error('Error loading global tariff data:', error);
     }
   }
+
+  async function loadTradeBalanceData() {
+    try {
+      const base = import.meta.env.BASE_URL || '';
+      const csvUrl = `${base}data/Trade_Balance_2024_2025.csv`;
+      tradeBalanceData = await d3.csv(csvUrl, (row) => ({
+        date: row['Date'] || '',
+        year: Number(row['Year']) || 0,
+        quarter: Number(row['Quarter']) || 0,
+        balance: Number(row['Trade_Balance_Hundreds_Millions']) || 0
+      }));
+      tradeBalanceData = [...tradeBalanceData];
+    } catch (error) {
+      console.error('Error loading trade balance data:', error);
+    }
+  }
+
+  async function loadFullTimelineDataset() {
+    try {
+      const base = import.meta.env.BASE_URL || '';
+      const csvUrl = `${base}Final_timeline_dataset_for_Tariff_PMI_TEU - Sheet1.csv`;
+      timelineData = await d3.csv(csvUrl, (row) => ({
+        date: new Date(row['Date'] || ''),
+        tariff_action: row['Tariff action'] || '',
+        chinese_tariffs_row: Number(row['Chinese tariffs on ROW exports']) || 0,
+        chinese_tariffs_us: Number(row['Chinese tariffs on US exports']) || 0,
+        us_tariffs_chinese: Number(row['US tariffs on Chinese exports']) || 0,
+        us_tariffs_row: Number(row['US tariffs on ROW exports']) || 0,
+        country: row['Country'] || '',
+        links: row['Links'] || '',
+        long_beach_teu: Number(row['Long_Beach_TEU']) || 0,
+        ca_los_angeles_teu: Number(row['CALos_Angeles_TEU']) || 0,
+        ca_ny_nj_teu: Number(row['CANY&NJ_TEU']) || 0,
+        ism_manufacturing_pmi: Number(row['ISM Manufacturing PMI']) || 0
+      }));
+      timelineData = [...timelineData];
+      console.log('Timeline data loaded:', timelineData.length, 'rows');
+    } catch (error) {
+      console.error('Error loading full timeline dataset:', error);
+    }
+  }
+
   onMount(async () => {
     await Promise.all([
       loadTariffCsv(),
       loadPMIData(),
       loadTEUData(),
       loadIncomeData(),
-      loadGlobalTariffData()
+      loadGlobalTariffData(),
+      loadTradeBalanceData(),
+      loadFullTimelineDataset()
     ]);
   });
 </script>
@@ -177,7 +224,7 @@
 <div class="page-wrapper">
   <StoryOpen />
   <div class="container">
-    <Scrolly2D {tariffs} {pmiData} {teuData} {incomeData} {globalTariffData}/>
+    <Scrolly2D {tariffs} {pmiData} {teuData} {incomeData} {globalTariffData} {tradeBalanceData} {timelineData}/>
   </div>
 </div>
 

@@ -129,9 +129,11 @@
 		<text
 			class="axis-label"
 			transform="rotate(-90)"
-			y={margin.left - 40}
+			y={15}
 			x={-(usableArea.top + usableArea.bottom) / 2}
-			dy="1em"
+			text-anchor="middle"
+			font-size="14"
+			font-weight="600"
 		>
 			PMI Value
 		</text>
@@ -140,6 +142,8 @@
 			y={height - 10}
 			x={(usableArea.left + usableArea.right) / 2}
 			text-anchor="middle"
+			font-size="14"
+			font-weight="600"
 		>
 			Date
 		</text>

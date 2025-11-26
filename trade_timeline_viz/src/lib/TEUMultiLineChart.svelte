@@ -30,9 +30,9 @@
 
 	const yMax = $derived(
 		Math.max(
-			d3.max(data, (d) => d.longBeach) || 0,
-			d3.max(data, (d) => d.losAngeles) || 0,
-			d3.max(data, (d) => d.nyNj) || 0
+			d3.max(data, (d) => d.longBeach ?? 0) || 0,
+			d3.max(data, (d) => d.losAngeles ?? 0) || 0,
+			d3.max(data, (d) => d.nyNj ?? 0) || 0
 		)
 	);
 
@@ -49,12 +49,11 @@
 	const lineGenerator = $derived((key: keyof TTEU) =>
 		d3
 			.line<TTEU>()
+			.defined((d) => d[key] !== null) // Skip null values
 			.x((d) => xScale(d.date))
 			.y((d) => yScale(d[key] as number))
 			.curve(d3.curveMonotoneX)
 	);
-
-	const tariffEffectiveDate = new Date('2025-08-01');
 
 	let xAxis: SVGGElement = $state();
 	let yAxis: SVGGElement = $state();
@@ -109,33 +108,17 @@
 
 				<!-- Data points -->
 				{#each visibleData as d}
-					<circle
-						cx={xScale(d.date)}
-						cy={yScale(d[series.key as keyof TTEU] as number)}
-						r="3"
-						fill={series.color}
-					/>
+					{#if d[series.key as keyof TTEU] !== null}
+						<circle
+							cx={xScale(d.date)}
+							cy={yScale(d[series.key as keyof TTEU] as number)}
+							r="3"
+							fill={series.color}
+						/>
+					{/if}
 				{/each}
 			{/if}
 		{/each}
-
-		<!-- Tariff effective date annotation -->
-		{#if currentDate >= tariffEffectiveDate}
-			<line
-				class="annotation-line"
-				x1={xScale(tariffEffectiveDate)}
-				y1={usableArea.top}
-				x2={xScale(tariffEffectiveDate)}
-				y2={usableArea.bottom}
-			/>
-			<text
-				class="annotation-label"
-				x={xScale(tariffEffectiveDate) + 5}
-				y={usableArea.top + 15}
-			>
-				Tariff Effective Date
-			</text>
-		{/if}
 
 		<!-- Axes -->
 		<g class="axes">
@@ -166,9 +149,11 @@
 		<text
 			class="axis-label"
 			transform="rotate(-90)"
-			y={margin.left - 40}
+			y={15}
 			x={-(usableArea.top + usableArea.bottom) / 2}
-			dy="1em"
+			text-anchor="middle"
+			font-size="14"
+			font-weight="600"
 		>
 			Container Throughput (TEU)
 		</text>
@@ -177,6 +162,8 @@
 			y={height - 10}
 			x={(usableArea.left + usableArea.right) / 2}
 			text-anchor="middle"
+			font-size="14"
+			font-weight="600"
 		>
 			Date
 		</text>
@@ -190,16 +177,6 @@
 	}
 	.teu-line {
 		transition: d 0.3s ease;
-	}
-	.annotation-line {
-		stroke: #ff9800;
-		stroke-width: 2px;
-		stroke-dasharray: 5, 5;
-	}
-	.annotation-label {
-		fill: #ff9800;
-		font-size: 12px;
-		font-weight: bold;
 	}
 	.axes,
 	.axis-label {
