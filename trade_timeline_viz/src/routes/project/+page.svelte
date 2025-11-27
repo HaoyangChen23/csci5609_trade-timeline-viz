@@ -202,7 +202,6 @@
         ism_manufacturing_pmi: Number(row['ISM Manufacturing PMI']) || 0
       }));
       timelineData = [...timelineData];
-      console.log('Timeline data loaded:', timelineData.length, 'rows');
     } catch (error) {
       console.error('Error loading full timeline dataset:', error);
     }

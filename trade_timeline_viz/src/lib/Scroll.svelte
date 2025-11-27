@@ -18,6 +18,7 @@
     margin?: number;
     debounce?: number | boolean; // debounce delay in ms, or false to disable.  the delay between the last scroll event and the update of the progress, can optimize performance when the scroll event is too frequent
     throttle?: number | boolean; // throttle delay in ms, the minimum time between two progress updates, can optimize performance when the scroll event is too frequent
+    id?: string; // Debug identifier
   };
   let {
     progress = $bindable(),
@@ -26,6 +27,7 @@
     margin = 30,
     debounce = false,
     throttle = false,
+    id = 'unknown',
   }: Props = $props();
 
   let container: HTMLElement, vizContainer;
@@ -77,7 +79,7 @@
       top = container.getBoundingClientRect().top,
     }: { top?: number } = {}): void {
       progressRaw = getProgress(top, minTop, maxTop);
-      // console.table({ minTop, maxTop, pageTop, top, progress, progressRaw });
+      console.log(`=== SCROLL [${id}] ===`, { minTop, maxTop, pageTop, top, progressRaw, progress });
       updateProgress();
     }
 
@@ -96,16 +98,24 @@
       rect = container.getBoundingClientRect();
 
       // progress = 0 when the top of the container passes threshold% of the viewport
-      // OR when we’re scrolled all the way to the top,
+      // OR when we're scrolled all the way to the top,
       // whichever is greater
       pageTop = window.scrollY + rect.top; // this is always constant
       minTop = Math.min(pageTop, innerHeight * threshold) + margin;
 
       // progress = 100 when the bottom of the container is at the bottom of the viewport (minus the margin),
-      maxTop = innerHeight - rect.height + margin;
+      // BUT if container is taller than viewport, use container height instead
+      maxTop = Math.max(innerHeight - rect.height + margin, -rect.height + margin);
+
+      // Ensure maxTop < minTop for proper scroll behavior
+      // (maxTop should be more negative than minTop since 'top' becomes negative as you scroll down)
+      if (maxTop >= minTop) {
+        // Container is shorter than the scroll range - adjust maxTop to create valid scroll bounds
+        maxTop = minTop - Math.max(rect.height, innerHeight);
+      }
 
       calculateProgress(rect);
-      // console.table({margin, minTop, maxTop, pageTop, top: rect.top, height: rect.height, progress, progressRaw });
+      console.log(`=== BOUNDS [${id}] ===`, {margin, minTop, maxTop, pageTop, containerHeight: rect.height, viewportHeight: innerHeight});
     }
 
     intersectionObserver = new IntersectionObserver((entries) => {

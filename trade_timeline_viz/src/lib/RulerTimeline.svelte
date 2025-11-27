@@ -4,60 +4,31 @@
 
 	type Props = {
 		data: TimelineData[];
-		progress: number;
+		currentDate: Date | null;
+		registerTimelineItem: (node: HTMLElement, index: number) => { destroy: () => void };
 	};
-	let { data, progress }: Props = $props();
+	let { data, currentDate, registerTimelineItem }: Props = $props();
 
 	// State for expanded events
 	let expandedEvents = $state(new Set<string>());
 
-	// Debug: Log data changes
-	$effect(() => {
-		console.log('RulerTimeline - data length:', data.length);
-		console.log('RulerTimeline - progress:', progress);
-	});
+	// Show all data (not filtered by currentDate)
+	// We'll highlight the current one instead
+	const visibleData = $derived(data);
 
-	// Filter data up to current progress (always show at least 1 item)
-	const visibleData = $derived.by(() => {
-		const maxIndex = Math.floor(progress * data.length);
-		const result = data.slice(0, Math.max(1, maxIndex));
-		console.log('RulerTimeline - visibleData length:', result.length);
-		return result;
-	});
+	// Helper function to check if item has tariff action
+	function hasTariffAction(item: TimelineData): boolean {
+		return Boolean(
+			item.tariff_action &&
+			item.tariff_action.trim() !== '' &&
+			item.tariff_action !== 'nan'
+		);
+	}
 
-	// Current date based on progress (for the indicator)
-	const currentDateIndex = $derived(Math.floor(progress * data.length) - 1);
-	const currentDate = $derived(currentDateIndex >= 0 && data[currentDateIndex] ? data[currentDateIndex].date : null);
-
-	// Group data by month for month headers
-	const dataByMonth = $derived.by(() => {
-		const grouped = new Map<string, TimelineData[]>();
-
-		visibleData.forEach((d) => {
-			const monthKey = d3.timeFormat('%Y-%m')(d.date);
-			if (!grouped.has(monthKey)) {
-				grouped.set(monthKey, []);
-			}
-			grouped.get(monthKey)!.push(d);
-		});
-
-		return Array.from(grouped.entries()).map(([monthKey, items]) => {
-			const [year, month] = monthKey.split('-');
-			const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-
-			// Check if month has any events
-			const hasEvents = items.some(item =>
-				item.tariff_action && item.tariff_action.trim() !== '' && item.tariff_action !== 'nan'
-			);
-
-			return {
-				monthKey,
-				monthName: d3.timeFormat('%B %Y')(monthDate),
-				items: items.sort((a, b) => a.date.getTime() - b.date.getTime()),
-				hasEvents
-			};
-		});
-	});
+	// Helper function to check if item is first of month
+	function isFirstOfMonth(item: TimelineData): boolean {
+		return item.date.getDate() === 1;
+	}
 
 	// Function to parse countries and deduplicate
 	function parseCountries(countryStr: string): string[] {
@@ -68,7 +39,6 @@
 			.map((c) => c.trim())
 			.filter((c) => c !== '' && c !== 'nan');
 
-		// Deduplicate
 		return [...new Set(countries)];
 	}
 
@@ -81,7 +51,6 @@
 
 		linkParts.forEach((part) => {
 			part = part.trim();
-			// Match markdown link format: [text](url)
 			const markdownMatch = part.match(/\[([^\]]+)\]\(([^)]+)\)/);
 			if (markdownMatch) {
 				links.push({ text: markdownMatch[1], url: markdownMatch[2] });
@@ -103,7 +72,7 @@
 		expandedEvents = new Set(expandedEvents);
 	}
 
-	// Check if text is long (more than 200 characters)
+	// Check if text is long
 	function isLongText(text: string): boolean {
 		return text && text.length > 200;
 	}
@@ -115,45 +84,45 @@
 	}
 </script>
 
-<div class="timeline-ruler">
-	{#each dataByMonth as month}
-		{#if month.hasEvents}
-			<!-- Month with events - show full timeline -->
-			<div class="month-marker">
-				<div class="month-line"></div>
-				<div class="month-label">{month.monthName}</div>
-			</div>
+<div class="timeline-container">
+	{#if currentDate}
+		<div class="current-date-indicator">
+			<span class="indicator-badge">Current: {d3.timeFormat('%B %d, %Y')(currentDate)}</span>
+		</div>
+	{/if}
 
-			<!-- Days in this month -->
-			{#each month.items as item}
-				{@const dateKey = d3.timeFormat('%Y-%m-%d')(item.date)}
-				{@const hasTariffAction = item.tariff_action && item.tariff_action.trim() !== '' && item.tariff_action !== 'nan'}
-				{@const isFirstOfMonth = item.date.getDate() === 1}
-				{@const isExpanded = expandedEvents.has(dateKey)}
-				{@const isCurrent = currentDate && item.date.getTime() === currentDate.getTime()}
+	<div class="timeline-ruler">
+		<!-- Top spacer to allow first item to reach center -->
+		<div class="timeline-spacer"></div>
 
-				{#if hasTariffAction}
-					{@const countries = parseCountries(item.country)}
-					{@const links = parseLinks(item.links)}
+		{#each visibleData as item, index}
+			{@const dateKey = d3.timeFormat('%Y-%m-%d')(item.date)}
+			{@const hasAction = hasTariffAction(item)}
+			{@const isFirstDay = isFirstOfMonth(item)}
+			{@const isCurrent = currentDate && item.date.getTime() === currentDate.getTime()}
+			{@const isExpanded = expandedEvents.has(dateKey)}
+			{@const countries = parseCountries(item.country)}
+			{@const links = parseLinks(item.links)}
 
-					<div class="day-marker has-event {isFirstOfMonth ? 'first-of-month' : ''} {isCurrent ? 'current-date' : ''}">
-					<!-- Progress indicator arrow (only for current date) -->
-					{#if isCurrent}
-						<div class="progress-indicator">
-							<div class="indicator-arrow"></div>
-							<div class="indicator-label">{d3.timeFormat('%b %d, %Y')(item.date)}</div>
-						</div>
-					{/if}
+			<div
+				class="timeline-item {isCurrent ? 'current-item highlighted' : ''}"
+				use:registerTimelineItem={index}
+			>
+				<!-- Timeline tick mark -->
+				<div class="tick-mark {hasAction ? 'with-action' : 'month-marker'}"></div>
 
-					<!-- Day tick mark -->
-					<div class="day-tick"></div>
+				<!-- Content box -->
+				<div class="item-content">
+					{#if hasAction}
+						<!-- Tariff Action Event -->
+						<div class="event-box">
+							<div class="event-header">
+								<span class="event-date">{d3.timeFormat('%b %d, %Y')(item.date)}</span>
+								{#if isFirstDay}
+									<span class="month-badge">Start of Month</span>
+								{/if}
+							</div>
 
-					<!-- Day label (smaller) -->
-					<div class="day-label">{d3.timeFormat('%d')(item.date)}</div>
-
-					<!-- Event content -->
-					<div class="event-content">
-							<!-- Country badges -->
 							{#if countries.length > 0}
 								<div class="country-badges">
 									{#each countries as country}
@@ -162,7 +131,6 @@
 								</div>
 							{/if}
 
-							<!-- Tariff action text -->
 							<div class="tariff-text">
 								<p class="tariff-description">
 									{isExpanded || !isLongText(item.tariff_action)
@@ -172,12 +140,11 @@
 
 								{#if isLongText(item.tariff_action)}
 									<button class="expand-button" onclick={() => toggleExpanded(dateKey)}>
-										{isExpanded ? 'Show less' : 'Expand to read more'}
+										{isExpanded ? 'Show less' : 'Read more'}
 									</button>
 								{/if}
 							</div>
 
-							<!-- Links -->
 							{#if links.length > 0}
 								<div class="event-links">
 									{#each links as link}
@@ -188,144 +155,192 @@
 								</div>
 							{/if}
 						</div>
-					</div>
-				{/if}
-			{/each}
-		{:else}
-			<!-- Empty month - show normal month marker -->
-			<div class="month-marker">
-				<div class="month-line"></div>
-				<div class="month-label">{month.monthName}</div>
+					{:else if isFirstDay}
+						<!-- First of Month Marker (no tariff action) -->
+						<div class="month-marker-box">
+							<span class="month-marker-text">Start of {d3.timeFormat('%B %Y')(item.date)}</span>
+						</div>
+					{/if}
+				</div>
 			</div>
-		{/if}
-	{/each}
+		{/each}
+
+		<!-- Bottom spacer to allow last item to reach center -->
+		<div class="timeline-spacer"></div>
+	</div>
 </div>
 
 <style>
-	.timeline-ruler {
+	.timeline-container {
 		position: relative;
 		padding: 20px 0;
-		min-height: 100vh;
 	}
 
-	/* Progress Indicator */
-	.progress-indicator {
+	.current-date-indicator {
+		position: sticky;
+		top: 10px;
+		z-index: 1000;
+		margin-bottom: 20px;
+		display: flex;
+		justify-content: flex-start;
+	}
+
+	.indicator-badge {
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		color: white;
+		padding: 12px 24px;
+		border-radius: 8px;
+		font-size: 16px;
+		font-weight: 700;
+		box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+		animation: pulse 2s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% {
+			box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+		}
+		50% {
+			box-shadow: 0 4px 20px rgba(102, 126, 234, 0.6);
+		}
+	}
+
+	.timeline-ruler {
+		position: relative;
+		padding-left: 40px;
+	}
+
+	.timeline-spacer {
+		height: 40vh; /* Half of the container height (80vh) to allow items to reach center */
+		min-height: 200px;
+	}
+
+	.timeline-item {
+		position: relative;
+		margin-bottom: 20px;
+		transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+	}
+
+	.timeline-item.highlighted {
+		background: linear-gradient(to right, rgba(102, 126, 234, 0.15), rgba(102, 126, 234, 0.05));
+		margin-left: -20px;
+		padding-left: 20px;
+		padding-top: 10px;
+		padding-bottom: 10px;
+		border-radius: 8px;
+		box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+	}
+
+	.timeline-item.current-item {
+		animation: highlightFade 1.5s ease-in-out;
+	}
+
+	@keyframes highlightFade {
+		0% {
+			background: rgba(102, 126, 234, 0.15);
+		}
+		100% {
+			background: rgba(102, 126, 234, 0.08);
+		}
+	}
+
+	.tick-mark {
 		position: absolute;
-		left: -10px;
-		top: 0;
-		z-index: 100;
+		left: 0;
+		top: 8px;
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: #ccc;
+		border: 3px solid white;
+		box-shadow: 0 0 0 2px #ccc;
+		transition: all 0.3s ease;
+	}
+
+	.tick-mark.with-action {
+		background: #4a90e2;
+		box-shadow: 0 0 0 2px #4a90e2;
+		width: 16px;
+		height: 16px;
+		top: 6px;
+	}
+
+	.tick-mark.month-marker {
+		background: #ff9f43;
+		box-shadow: 0 0 0 2px #ff9f43;
+	}
+
+	.timeline-item.highlighted .tick-mark {
+		transform: scale(1.3);
+		box-shadow: 0 0 0 3px #667eea, 0 0 12px rgba(102, 126, 234, 0.5);
+	}
+
+	.item-content {
+		margin-left: 30px;
+	}
+
+	.event-box {
+		background: #f8f9fa;
+		border: 1px solid #e0e0e0;
+		border-radius: 8px;
+		padding: 16px;
+		transition: all 0.3s ease;
+	}
+
+	.timeline-item.highlighted .event-box {
+		background: white;
+		border-color: #667eea;
+		box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+	}
+
+	.event-header {
 		display: flex;
 		align-items: center;
-	}
-
-	.indicator-arrow {
-		width: 0;
-		height: 0;
-		border-top: 8px solid transparent;
-		border-bottom: 8px solid transparent;
-		border-left: 12px solid #ff6b6b;
-	}
-
-	.indicator-label {
-		position: absolute;
-		left: -95px;
-		background: #ff6b6b;
-		color: white;
-		padding: 5px 10px;
-		border-radius: 4px;
-		font-size: 11px;
-		font-weight: 600;
-		white-space: nowrap;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-	}
-
-	.day-marker.current-date {
-		background-color: rgba(255, 107, 107, 0.05);
-	}
-
-	/* Month Markers */
-	.month-marker {
-		position: relative;
-		margin: 40px 0 20px 0;
-	}
-
-	.month-line {
-		width: 100%;
-		height: 3px;
-		background: linear-gradient(to right, #4a90e2, #2c3e50);
-		border-radius: 2px;
+		gap: 10px;
 		margin-bottom: 10px;
 	}
 
-	.month-label {
-		font-size: 22px;
+	.event-date {
+		font-size: 14px;
 		font-weight: 700;
 		color: #2c3e50;
-		padding: 5px 0;
-		background: white;
-		display: inline-block;
 	}
 
-	/* Day Markers */
-	.day-marker {
-		position: relative;
-		margin-left: 20px;
-		padding-left: 20px;
-		border-left: 2px solid #e0e0e0;
-		min-height: 30px;
-		margin-bottom: 5px;
+	.month-badge {
+		background: #ff9f43;
+		color: white;
+		padding: 3px 8px;
+		border-radius: 4px;
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
 	}
 
-	.day-marker.has-event {
-		border-left-color: #4a90e2;
-		border-left-width: 3px;
-		margin-bottom: 20px;
-		padding-bottom: 15px;
-	}
-
-	.day-marker.first-of-month {
-		margin-top: 0;
-	}
-
-	.day-tick {
-		position: absolute;
-		left: -2px;
-		top: 0;
-		width: 10px;
-		height: 2px;
-		background: #666;
-	}
-
-	.day-marker.has-event .day-tick {
-		width: 15px;
-		height: 3px;
-		background: #4a90e2;
-		left: -3px;
-	}
-
-	.day-label {
-		font-size: 12px;
-		color: #666;
-		position: absolute;
-		left: -45px;
-		top: -5px;
-		width: 30px;
-		text-align: right;
-	}
-
-	.event-content {
-		margin-top: 5px;
-		padding: 12px;
-		background: #f8f9fa;
+	.month-marker-box {
+		background: #fff3e0;
+		border: 2px solid #ff9f43;
 		border-radius: 6px;
-		border: 1px solid #e0e0e0;
+		padding: 10px 16px;
+		transition: all 0.3s ease;
+	}
+
+	.timeline-item.highlighted .month-marker-box {
+		background: #ffe0b2;
+		border-color: #ff9f43;
+		box-shadow: 0 4px 12px rgba(255, 159, 67, 0.2);
+	}
+
+	.month-marker-text {
+		font-size: 14px;
+		font-weight: 600;
+		color: #e67e22;
 	}
 
 	.country-badges {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px;
-		margin-bottom: 10px;
+		margin-bottom: 12px;
 	}
 
 	.country-badge {
@@ -369,12 +384,12 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px;
-		margin-top: 8px;
+		margin-top: 10px;
 	}
 
 	.link-button {
 		display: inline-block;
-		padding: 5px 10px;
+		padding: 6px 12px;
 		background: #357ab8;
 		color: white;
 		text-decoration: none;

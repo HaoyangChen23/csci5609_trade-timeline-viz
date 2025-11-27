@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
 	import type { TimelineData } from '../types';
 
 	type Props = {
 		data: TimelineData[];
-		progress: number;
+		currentDate: Date | null;
 		height: number;
 		width: number;
 	};
-	let { data, progress, height, width }: Props = $props();
+	let { data, currentDate, height, width }: Props = $props();
 
 	// SVG elements
+	let svgElement: SVGSVGElement;
 	let xAxis: SVGGElement;
 	let yAxis: SVGGElement;
 
@@ -24,42 +24,35 @@
 		left: margin.left
 	});
 
-	// Normalize progress to 0-1 range (it might come as 0-100 or other scale)
-	// Round to 3 decimal places (0.1% precision) to prevent oscillation from tiny changes
-	const normalizedProgress = $derived(
-		Math.round(Math.max(0, Math.min(1, progress > 1 ? progress / 100 : progress)) * 1000) / 1000
-	);
-
-	// Aggregate data by month (TEU data is monthly)
+	// Filter data to only first-of-month entries and stop at Aug 2025
 	const monthlyData = $derived.by(() => {
-		const grouped = new Map<string, TimelineData>();
+		const seen = new Set<string>();
+		const filtered: TimelineData[] = [];
+		const augustCutoff = new Date('2025-09-01'); // Stop before September
 
 		data.forEach((d) => {
-			const monthKey = d3.timeFormat('%Y-%m')(d.date);
-			// Use the first entry of each month (they should all have the same TEU values)
-			if (!grouped.has(monthKey)) {
-				grouped.set(monthKey, d);
+			if (d.date >= augustCutoff) return; // Skip September 2025 and later
+
+			if (d.date.getDate() === 1) {
+				const monthKey = d3.timeFormat('%Y-%m')(d.date);
+				if (!seen.has(monthKey)) {
+					filtered.push(d);
+					seen.add(monthKey);
+				}
 			}
 		});
 
-		return Array.from(grouped.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+		return filtered.sort((a, b) => a.date.getTime() - b.date.getTime());
 	});
 
-	// Filter data based on progress
-	const visibleData = $derived.by(() => {
-		const maxIndex = Math.floor(normalizedProgress * monthlyData.length);
-		const result = monthlyData.slice(0, Math.max(1, maxIndex));
-		console.log('PortTEUChart - raw progress:', progress, 'normalized:', normalizedProgress, 'maxIndex:', maxIndex, 'visibleData length:', result.length);
-		return result;
+	// Filter visible monthly data based on current date
+	// Only show months up to and including the current month
+	const visibleMonthlyData = $derived.by(() => {
+		if (!currentDate) return [];
+		return monthlyData.filter(d => d.date <= currentDate);
 	});
 
-	// Get the current date based on progress for the indicator line
-	const currentDate = $derived.by(() => {
-		const currentIndex = Math.floor(normalizedProgress * monthlyData.length) - 1;
-		return currentIndex >= 0 && monthlyData[currentIndex] ? monthlyData[currentIndex].date : null;
-	});
-
-	// Scales
+	// Scales - use full monthly data range
 	const xScale = $derived(
 		d3
 			.scaleTime()
@@ -73,7 +66,7 @@
 			d.ca_los_angeles_teu,
 			d.ca_ny_nj_teu
 		]);
-		const [min, max] = d3.extent(allValues) as [number, number];
+		const [_, max] = d3.extent(allValues) as [number, number];
 		return d3
 			.scaleLinear()
 			.domain([0, max])
@@ -115,6 +108,31 @@
 		}
 	});
 
+	// Smooth transitions for line paths
+	$effect(() => {
+		if (!svgElement || visibleMonthlyData.length === 0) return;
+
+		const svg = d3.select(svgElement);
+
+		svg.select('.line-long-beach')
+			.transition()
+			.duration(300)
+			.ease(d3.easeCubicInOut)
+			.attr('d', lineLongBeach(visibleMonthlyData) || '');
+
+		svg.select('.line-los-angeles')
+			.transition()
+			.duration(300)
+			.ease(d3.easeCubicInOut)
+			.attr('d', lineLosAngeles(visibleMonthlyData) || '');
+
+		svg.select('.line-ny-nj')
+			.transition()
+			.duration(300)
+			.ease(d3.easeCubicInOut)
+			.attr('d', lineNYNJ(visibleMonthlyData) || '');
+	});
+
 	// Line colors
 	const colors = {
 		long_beach: '#e74c3c',
@@ -124,7 +142,7 @@
 </script>
 
 {#if monthlyData.length > 0}
-	<svg {width} {height} class="chart-svg">
+	<svg bind:this={svgElement} {width} {height} class="chart-svg">
 		<!-- Grid lines -->
 		<g class="grid-lines">
 			{#each yScale.ticks(8) as tick}
@@ -142,56 +160,63 @@
 
 		<!-- Lines -->
 		<g class="lines">
-			{#if visibleData.length > 0}
-				<!-- Long Beach TEU -->
-				<path
-					d={lineLongBeach(visibleData) || ''}
-					fill="none"
-					stroke={colors.long_beach}
-					stroke-width="2.5"
-					class="teu-line"
-				/>
+			<!-- Long Beach TEU -->
+			<path
+				class="teu-line line-long-beach"
+				fill="none"
+				stroke={colors.long_beach}
+				stroke-width="2.5"
+			/>
 
-				<!-- Los Angeles TEU -->
-				<path
-					d={lineLosAngeles(visibleData) || ''}
-					fill="none"
-					stroke={colors.los_angeles}
-					stroke-width="2.5"
-					class="teu-line"
-				/>
+			<!-- Los Angeles TEU -->
+			<path
+				class="teu-line line-los-angeles"
+				fill="none"
+				stroke={colors.los_angeles}
+				stroke-width="2.5"
+			/>
 
-				<!-- NY & NJ TEU -->
-				<path
-					d={lineNYNJ(visibleData) || ''}
-					fill="none"
-					stroke={colors.ny_nj}
-					stroke-width="2.5"
-					class="teu-line"
-				/>
-			{/if}
+			<!-- NY & NJ TEU -->
+			<path
+				class="teu-line line-ny-nj"
+				fill="none"
+				stroke={colors.ny_nj}
+				stroke-width="2.5"
+			/>
 		</g>
 
-		<!-- Progress indicator line -->
-		{#if currentDate}
-			<line
-				x1={xScale(currentDate)}
-				x2={xScale(currentDate)}
-				y1={usableArea.top}
-				y2={usableArea.bottom}
-				stroke="#ff6b6b"
-				stroke-width="2"
-				stroke-dasharray="5,5"
-				opacity="0.7"
-				class="progress-line"
-			/>
-			<circle
-				cx={xScale(currentDate)}
-				cy={usableArea.top - 10}
-				r="5"
-				fill="#ff6b6b"
-				class="progress-indicator"
-			/>
+		<!-- Progress indicator line (only show if current date is first of month) -->
+		{#if currentDate && currentDate.getDate() === 1}
+			<g class="progress-indicator">
+				<line
+					x1={xScale(currentDate)}
+					x2={xScale(currentDate)}
+					y1={usableArea.top}
+					y2={usableArea.bottom}
+					stroke="#667eea"
+					stroke-width="3"
+					stroke-dasharray="5,5"
+					opacity="0.8"
+					class="progress-line"
+				/>
+				<circle
+					cx={xScale(currentDate)}
+					cy={usableArea.top - 15}
+					r="6"
+					fill="#667eea"
+					class="progress-dot"
+				/>
+				<text
+					x={xScale(currentDate)}
+					y={usableArea.top - 25}
+					text-anchor="middle"
+					font-size="11"
+					font-weight="600"
+					fill="#667eea"
+				>
+					{d3.timeFormat('%b %Y')(currentDate)}
+				</text>
+			</g>
 		{/if}
 
 		<!-- Axes -->
@@ -243,6 +268,18 @@
 		<text class="chart-title" x={width / 2} y={margin.top / 2} text-anchor="middle">
 			Front-loading Effect at U.S. Ports
 		</text>
+
+		<!-- Note about data availability -->
+		<text
+			x={usableArea.right}
+			y={usableArea.bottom + 45}
+			text-anchor="end"
+			font-size="10"
+			fill="#999"
+			font-style="italic"
+		>
+			Data available through August 2025
+		</text>
 	</svg>
 {/if}
 
@@ -251,13 +288,24 @@
 		font-family: Arial, sans-serif;
 		font-size: 12px;
 	}
+
 	.teu-line {
-		transition: d 0.3s ease;
+		transition: opacity 0.3s ease;
 	}
+
+	.progress-line {
+		transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+	}
+
+	.progress-dot {
+		transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+	}
+
 	.axes,
 	.axis-label {
 		color: #333;
 	}
+
 	.chart-title {
 		font-size: 16px;
 		font-weight: bold;

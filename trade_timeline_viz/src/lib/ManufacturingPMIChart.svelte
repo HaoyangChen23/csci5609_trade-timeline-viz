@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
 	import type { TimelineData } from '../types';
 
 	type Props = {
 		data: TimelineData[];
-		progress: number;
+		currentDate: Date | null;
 		height: number;
 		width: number;
 	};
-	let { data, progress, height, width }: Props = $props();
+	let { data, currentDate, height, width }: Props = $props();
 
 	// SVG elements
+	let svgElement: SVGSVGElement;
 	let xAxis: SVGGElement;
 	let yAxis: SVGGElement;
 
@@ -24,42 +24,31 @@
 		left: margin.left
 	});
 
-	// Normalize progress to 0-1 range (it might come as 0-100 or other scale)
-	// Round to 3 decimal places (0.1% precision) to prevent oscillation from tiny changes
-	const normalizedProgress = $derived(
-		Math.round(Math.max(0, Math.min(1, progress > 1 ? progress / 100 : progress)) * 1000) / 1000
-	);
-
-	// Aggregate data by month (PMI data is monthly)
+	// Filter data to only first-of-month entries
 	const monthlyData = $derived.by(() => {
-		const grouped = new Map<string, TimelineData>();
+		const seen = new Set<string>();
+		const filtered: TimelineData[] = [];
 
 		data.forEach((d) => {
-			const monthKey = d3.timeFormat('%Y-%m')(d.date);
-			// Use the first entry of each month (they should all have the same PMI value)
-			if (!grouped.has(monthKey)) {
-				grouped.set(monthKey, d);
+			if (d.date.getDate() === 1) {
+				const monthKey = d3.timeFormat('%Y-%m')(d.date);
+				if (!seen.has(monthKey)) {
+					filtered.push(d);
+					seen.add(monthKey);
+				}
 			}
 		});
 
-		return Array.from(grouped.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
+		return filtered.sort((a, b) => a.date.getTime() - b.date.getTime());
 	});
 
-	// Filter data based on progress
-	const visibleData = $derived.by(() => {
-		const maxIndex = Math.floor(normalizedProgress * monthlyData.length);
-		const result = monthlyData.slice(0, Math.max(1, maxIndex));
-		console.log('ManufacturingPMIChart - raw progress:', progress, 'normalized:', normalizedProgress, 'maxIndex:', maxIndex, 'visibleData length:', result.length);
-		return result;
+	// Filter visible monthly data based on current date
+	const visibleMonthlyData = $derived.by(() => {
+		if (!currentDate) return [];
+		return monthlyData.filter(d => d.date <= currentDate);
 	});
 
-	// Get the current date based on progress for the indicator line
-	const currentDate = $derived.by(() => {
-		const currentIndex = Math.floor(normalizedProgress * monthlyData.length) - 1;
-		return currentIndex >= 0 && monthlyData[currentIndex] ? monthlyData[currentIndex].date : null;
-	});
-
-	// Scales
+	// Scales - use full monthly data range
 	const xScale = $derived(
 		d3
 			.scaleTime()
@@ -106,12 +95,34 @@
 		}
 	});
 
+	// Smooth transitions for line and area paths
+	$effect(() => {
+		if (!svgElement || visibleMonthlyData.length === 0) return;
+
+		const svg = d3.select(svgElement);
+
+		// Transition line
+		svg.select('.pmi-line-path')
+			.transition()
+			.duration(300)
+			.ease(d3.easeCubicInOut)
+			.attr('d', pmiLine(visibleMonthlyData) || '');
+
+		// Transition area
+		const contractionData = visibleMonthlyData.filter((d) => d.ism_manufacturing_pmi < 50);
+		svg.select('.pmi-area-path')
+			.transition()
+			.duration(300)
+			.ease(d3.easeCubicInOut)
+			.attr('d', pmiArea(contractionData) || '');
+	});
+
 	// Reference line at 50 (expansion/contraction threshold)
 	const threshold50 = $derived(yScale(50));
 </script>
 
 {#if monthlyData.length > 0}
-	<svg {width} {height} class="chart-svg">
+	<svg bind:this={svgElement} {width} {height} class="chart-svg">
 		<!-- Grid lines -->
 		<g class="grid-lines">
 			{#each yScale.ticks(8) as tick}
@@ -142,61 +153,66 @@
 		</text>
 
 		<!-- Area below 50 (contraction) -->
-		{#if visibleData.length > 0}
-			{@const contractionData = visibleData.filter((d) => d.ism_manufacturing_pmi < 50)}
-			{#if contractionData.length > 0}
-				<path
-					d={pmiArea(contractionData) || ''}
-					fill="#ffcdd2"
-					opacity="0.5"
-				/>
-			{/if}
-		{/if}
+		<path
+			class="pmi-area-path"
+			fill="#ffcdd2"
+			opacity="0.5"
+		/>
 
 		<!-- PMI Line -->
 		<g class="lines">
-			{#if visibleData.length > 0}
-				<path
-					d={pmiLine(visibleData) || ''}
-					fill="none"
-					stroke="#1976d2"
-					stroke-width="3"
-					class="pmi-line"
-				/>
+			<path
+				class="pmi-line pmi-line-path"
+				fill="none"
+				stroke="#1976d2"
+				stroke-width="3"
+			/>
 
-				<!-- Data points -->
-				{#each visibleData as d}
-					<circle
-						cx={xScale(d.date)}
-						cy={yScale(d.ism_manufacturing_pmi)}
-						r="4"
-						fill={d.ism_manufacturing_pmi < 50 ? '#d32f2f' : '#1976d2'}
-						class="data-point"
-					/>
-				{/each}
-			{/if}
+			<!-- Data points with fade-in animation -->
+			{#each visibleMonthlyData as d}
+				<circle
+					cx={xScale(d.date)}
+					cy={yScale(d.ism_manufacturing_pmi)}
+					r="4"
+					fill={d.ism_manufacturing_pmi < 50 ? '#d32f2f' : '#1976d2'}
+					class="data-point"
+					style="animation: fadeIn 0.3s ease-in-out;"
+				/>
+			{/each}
 		</g>
 
-		<!-- Progress indicator line -->
-		{#if currentDate}
-			<line
-				x1={xScale(currentDate)}
-				x2={xScale(currentDate)}
-				y1={usableArea.top}
-				y2={usableArea.bottom}
-				stroke="#ff6b6b"
-				stroke-width="2"
-				stroke-dasharray="5,5"
-				opacity="0.7"
-				class="progress-line"
-			/>
-			<circle
-				cx={xScale(currentDate)}
-				cy={usableArea.top - 10}
-				r="5"
-				fill="#ff6b6b"
-				class="progress-indicator"
-			/>
+		<!-- Progress indicator line (only show if current date is first of month) -->
+		{#if currentDate && currentDate.getDate() === 1}
+			<g class="progress-indicator">
+				<line
+					x1={xScale(currentDate)}
+					x2={xScale(currentDate)}
+					y1={usableArea.top}
+					y2={usableArea.bottom}
+					stroke="#667eea"
+					stroke-width="3"
+					stroke-dasharray="5,5"
+					opacity="0.8"
+					class="progress-line"
+				/>
+				<circle
+					cx={xScale(currentDate)}
+					cy={usableArea.top - 15}
+					r="6"
+					fill="#667eea"
+					class="progress-dot"
+				/>
+				<text
+					x={xScale(currentDate)}
+					y={usableArea.top - 25}
+					text-anchor="middle"
+					font-size="11"
+					font-weight="600"
+					fill="#667eea"
+				>
+					{d3.timeFormat('%b %Y')(currentDate)}
+				</text>
+			</g>
 		{/if}
 
 		<!-- Axes -->
@@ -248,19 +264,43 @@
 		font-family: Arial, sans-serif;
 		font-size: 12px;
 	}
+
 	.pmi-line {
-		transition: d 0.3s ease;
+		transition: opacity 0.3s ease;
 	}
+
 	.data-point {
 		transition: all 0.2s ease;
 	}
+
 	.data-point:hover {
 		r: 6;
 	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: scale(0.8);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	.progress-line {
+		transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+	}
+
+	.progress-dot {
+		transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+	}
+
 	.axes,
 	.axis-label {
 		color: #333;
 	}
+
 	.chart-title {
 		font-size: 16px;
 		font-weight: bold;

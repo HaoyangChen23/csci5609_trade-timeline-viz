@@ -16,29 +16,83 @@
   import { Scroll, RulerTimeline, TariffRatesChart, PortTEUChart, ManufacturingPMIChart, AutoIncomeBarChart, GlobeTariffViz, TradeBalanceChart, PMILineChart, TEUMultiLineChart } from "$lib";
   import * as d3 from "d3";
 
-  // Separate progress variables for each scroll section to prevent conflicts
-  let timelineProgress = $state(0.01); // Main timeline section
-  let tradeBalanceProgress = $state(0); // Trade balance section
-  let autoIncomeProgress = $state(0); // Auto income section
+  // Progress variables for other scroll sections
+  let tradeBalanceScrollProgress = $state(0);
+  let autoIncomeScrollProgress = $state(0);
 
-  // Debug: Log when timelineData changes
-  $effect(() => {
-    console.log('timelineData in Scrolly2D:', timelineData.length, 'items');
-    console.log('timelineProgress:', timelineProgress);
+  // Timeline scroll state (independent from page scroll)
+  let timelineScrollContainer: HTMLElement;
+  let currentIndex = $state(0); // Start at 0 to show first date
+  let timelineItemElements = new Map<number, HTMLElement>(); // Store refs to timeline items
+
+  // Create filtered timeline dataset: only tariff action dates + first of each month
+  const filteredTimelineData = $derived.by(() => {
+    const seen = new Set<string>();
+    const filtered: TimelineData[] = [];
+
+    timelineData.forEach((d) => {
+      const dateKey = d3.timeFormat('%Y-%m-%d')(d.date);
+
+      // Skip if already added
+      if (seen.has(dateKey)) return;
+
+      // Include if has tariff action
+      const hasTariffAction = d.tariff_action &&
+                              d.tariff_action.trim() !== '' &&
+                              d.tariff_action !== 'nan';
+
+      // Include if first day of month
+      const isFirstOfMonth = d.date.getDate() === 1;
+
+      if (hasTariffAction || isFirstOfMonth) {
+        filtered.push(d);
+        seen.add(dateKey);
+      }
+    });
+
+    // Sort by date to ensure chronological order
+    return filtered.sort((a, b) => a.date.getTime() - b.date.getTime());
   });
 
-  // Set initial progress to show data before 2025
-  let dateRange = $derived(d3.extent(tariffs.map((d) => d.date)) as [Date, Date]);
+  // Calculate current date from index
+  const currentDate = $derived(currentIndex >= 0 ? filteredTimelineData[currentIndex]?.date : null);
 
-  // Filter tariffs to get events before 2025 for initial display
-  const tariffsBefore2025 = $derived(
-    tariffs.filter((d) => d.date.getFullYear() < 2025)
-  );
+  // Handle timeline container scroll - find item closest to center
+  function handleTimelineScroll(event: Event) {
+    const container = event.target as HTMLElement;
+    if (!container) return;
 
-  // Get significant tariff events (events where tariff action is not just a date)
-  const significantEvents = $derived(
-    tariffs.filter((d) => d.tariff_action && d.tariff_action !== "")
-  );
+    const containerRect = container.getBoundingClientRect();
+    const containerCenter = containerRect.top + containerRect.height / 2;
+
+    let closestIndex = 0;
+    let closestDistance = Infinity;
+
+    // Find which timeline item is closest to the center of the viewport
+    timelineItemElements.forEach((element, index) => {
+      const itemRect = element.getBoundingClientRect();
+      const itemCenter = itemRect.top + itemRect.height / 2;
+      const distance = Math.abs(itemCenter - containerCenter);
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    currentIndex = closestIndex;
+  }
+
+  // Svelte action to register timeline item elements
+  function registerTimelineItem(node: HTMLElement, index: number) {
+    timelineItemElements.set(index, node);
+
+    return {
+      destroy() {
+        timelineItemElements.delete(index);
+      }
+    };
+  }
 
   const chartHeight = 500;
   const chartWidth = 900;
@@ -50,27 +104,35 @@
   and manufacturing. Scroll through to see how events unfold chronologically with synchronized visualizations.
 </p>
 
-<!-- Main Scrollytelling Section with Timeline and Visualizations -->
-{#if timelineData.length > 0}
-  <Scroll bind:progress={timelineProgress}>
-    <!-- Timeline Story (Left side) -->
-    <RulerTimeline data={timelineData} progress={timelineProgress} />
+<!-- Main Timeline & Charts Section (Independent from page scroll) -->
+{#if filteredTimelineData.length > 0}
+  <div class="timeline-charts-container">
+    <!-- Timeline Story (Left side) - Scrollable Container -->
+    <div
+      class="timeline-scroll-container"
+      bind:this={timelineScrollContainer}
+      onscroll={handleTimelineScroll}
+    >
+      <RulerTimeline data={filteredTimelineData} {currentDate} {registerTimelineItem} />
+    </div>
 
-    <!-- Visualizations (Right side) -->
-    <div slot="viz" class="visualizations-stack">
-      <div class="chart-wrapper">
-        <TariffRatesChart data={timelineData} progress={timelineProgress} height={chartHeight} width={chartWidth} />
-      </div>
+    <!-- Visualizations (Right side) - Scrollable Container -->
+    <div class="charts-scroll-container">
+      <div class="visualizations-stack">
+        <div class="chart-wrapper">
+          <TariffRatesChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} />
+        </div>
 
-      <div class="chart-wrapper">
-        <PortTEUChart data={timelineData} progress={timelineProgress} height={chartHeight} width={chartWidth} />
-      </div>
+        <div class="chart-wrapper">
+          <PortTEUChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} />
+        </div>
 
-      <div class="chart-wrapper">
-        <ManufacturingPMIChart data={timelineData} progress={timelineProgress} height={chartHeight} width={chartWidth} />
+        <div class="chart-wrapper">
+          <ManufacturingPMIChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} />
+        </div>
       </div>
     </div>
-  </Scroll>
+  </div>
 {:else}
   <div class="loading">Loading timeline data...</div>
 {/if}
@@ -83,7 +145,7 @@
   Negative values indicate a trade deficit, where the U.S. imports more than it exports.
 </p>
 
-<Scroll bind:progress={tradeBalanceProgress}>
+<Scroll bind:progress={tradeBalanceScrollProgress} id="tradeBalance">
   <div class="info-section">
     <h3>Key Insight</h3>
     <p>
@@ -105,7 +167,7 @@
   The trade war had a direct and measurable effect on automaker profits.
 </p>
 
-<Scroll bind:progress={autoIncomeProgress}>
+<Scroll bind:progress={autoIncomeScrollProgress} id="autoIncome">
   <div class="info-section">
     <h3>Key Insight</h3>
     <p>
@@ -158,6 +220,72 @@
     line-height: 1.6;
     margin-bottom: 30px;
     font-size: 16px;
+  }
+
+  /* Timeline & Charts Container */
+  .timeline-charts-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin: 40px 0;
+    min-height: 80vh;
+  }
+
+  /* Scrollable containers for timeline and charts */
+  .timeline-scroll-container {
+    height: 80vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 20px;
+    /* Custom scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: #667eea #f1f1f1;
+  }
+
+  .timeline-scroll-container::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .timeline-scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  .timeline-scroll-container::-webkit-scrollbar-thumb {
+    background: #667eea;
+    border-radius: 4px;
+  }
+
+  .timeline-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #5568d3;
+  }
+
+  .charts-scroll-container {
+    height: 80vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-left: 20px;
+    /* Custom scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: #4a90e2 #f1f1f1;
+  }
+
+  .charts-scroll-container::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .charts-scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  .charts-scroll-container::-webkit-scrollbar-thumb {
+    background: #4a90e2;
+    border-radius: 4px;
+  }
+
+  .charts-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #3a7bc8;
   }
 
   .visualizations-stack {

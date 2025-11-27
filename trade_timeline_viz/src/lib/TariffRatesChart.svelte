@@ -4,13 +4,14 @@
 
 	type Props = {
 		data: TimelineData[];
-		progress: number;
+		currentDate: Date | null;
 		height: number;
 		width: number;
 	};
-	let { data, progress, height, width }: Props = $props();
+	let { data, currentDate, height, width }: Props = $props();
 
 	// SVG elements
+	let svgElement: SVGSVGElement;
 	let xAxis: SVGGElement;
 	let yAxis: SVGGElement;
 
@@ -23,31 +24,13 @@
 		left: margin.left
 	});
 
-	// Normalize progress to 0-1 range (it might come as 0-100 or other scale)
-	// Round to 3 decimal places (0.1% precision) to prevent oscillation from tiny changes
-	const normalizedProgress = $derived(
-		Math.round(Math.max(0, Math.min(1, progress > 1 ? progress / 100 : progress)) * 1000) / 1000
-	);
-
-	// Filter data based on progress
+	// Filter visible data up to current date
 	const visibleData = $derived.by(() => {
-		if (!data || data.length === 0) {
-			console.log('TariffRatesChart - NO DATA!');
-			return [];
-		}
-		const maxIndex = Math.floor(normalizedProgress * data.length);
-		const result = data.slice(0, Math.max(1, maxIndex));
-		console.log('TariffRatesChart - data length:', data.length, 'raw progress:', progress, 'normalized:', normalizedProgress, 'maxIndex:', maxIndex, 'visibleData length:', result.length, 'first item:', result[0]?.date);
-		return result;
+		if (!currentDate) return [];
+		return data.filter(d => d.date <= currentDate);
 	});
 
-	// Get the current date based on progress for the indicator line
-	const currentDate = $derived.by(() => {
-		const currentIndex = Math.floor(normalizedProgress * data.length) - 1;
-		return currentIndex >= 0 && data[currentIndex] ? data[currentIndex].date : null;
-	});
-
-	// Scales
+	// Scales - use full data range for consistent domain
 	const xScale = $derived(
 		d3
 			.scaleTime()
@@ -111,6 +94,38 @@
 		}
 	});
 
+	// Smooth transitions for line paths
+	$effect(() => {
+		if (!svgElement || visibleData.length === 0) return;
+
+		const svg = d3.select(svgElement);
+
+		// Transition all lines smoothly
+		svg.select('.line-chinese-row')
+			.transition()
+			.duration(300)
+			.ease(d3.easeCubicInOut)
+			.attr('d', lineChineseTariffsRow(visibleData) || '');
+
+		svg.select('.line-chinese-us')
+			.transition()
+			.duration(300)
+			.ease(d3.easeCubicInOut)
+			.attr('d', lineChineseTariffsUS(visibleData) || '');
+
+		svg.select('.line-us-chinese')
+			.transition()
+			.duration(300)
+			.ease(d3.easeCubicInOut)
+			.attr('d', lineUSTariffsChinese(visibleData) || '');
+
+		svg.select('.line-us-row')
+			.transition()
+			.duration(300)
+			.ease(d3.easeCubicInOut)
+			.attr('d', lineUSTariffsRow(visibleData) || '');
+	});
+
 	// Line colors
 	const colors = {
 		chinese_row: '#ff6b6b',
@@ -121,7 +136,7 @@
 </script>
 
 {#if data.length > 0}
-	<svg {width} {height} class="chart-svg">
+	<svg bind:this={svgElement} {width} {height} class="chart-svg">
 		<!-- Grid lines -->
 		<g class="grid-lines">
 			{#each yScale.ticks(8) as tick}
@@ -139,65 +154,71 @@
 
 		<!-- Lines -->
 		<g class="lines">
-			{#if visibleData.length > 0}
-				<!-- Chinese tariffs on ROW -->
-				<path
-					d={lineChineseTariffsRow(visibleData) || ''}
-					fill="none"
-					stroke={colors.chinese_row}
-					stroke-width="2.5"
-					class="tariff-line"
-				/>
+			<!-- Chinese tariffs on ROW -->
+			<path
+				class="tariff-line line-chinese-row"
+				fill="none"
+				stroke={colors.chinese_row}
+				stroke-width="2.5"
+			/>
 
-				<!-- Chinese tariffs on US -->
-				<path
-					d={lineChineseTariffsUS(visibleData) || ''}
-					fill="none"
-					stroke={colors.chinese_us}
-					stroke-width="2.5"
-					class="tariff-line"
-				/>
+			<!-- Chinese tariffs on US -->
+			<path
+				class="tariff-line line-chinese-us"
+				fill="none"
+				stroke={colors.chinese_us}
+				stroke-width="2.5"
+			/>
 
-				<!-- US tariffs on Chinese -->
-				<path
-					d={lineUSTariffsChinese(visibleData) || ''}
-					fill="none"
-					stroke={colors.us_chinese}
-					stroke-width="2.5"
-					class="tariff-line"
-				/>
+			<!-- US tariffs on Chinese -->
+			<path
+				class="tariff-line line-us-chinese"
+				fill="none"
+				stroke={colors.us_chinese}
+				stroke-width="2.5"
+			/>
 
-				<!-- US tariffs on ROW -->
-				<path
-					d={lineUSTariffsRow(visibleData) || ''}
-					fill="none"
-					stroke={colors.us_row}
-					stroke-width="2.5"
-					class="tariff-line"
-				/>
-			{/if}
+			<!-- US tariffs on ROW -->
+			<path
+				class="tariff-line line-us-row"
+				fill="none"
+				stroke={colors.us_row}
+				stroke-width="2.5"
+			/>
 		</g>
 
 		<!-- Progress indicator line -->
 		{#if currentDate}
-			<line
-				x1={xScale(currentDate)}
-				x2={xScale(currentDate)}
-				y1={usableArea.top}
-				y2={usableArea.bottom}
-				stroke="#ff6b6b"
-				stroke-width="2"
-				stroke-dasharray="5,5"
-				opacity="0.7"
-				class="progress-line"
-			/>
-			<circle
-				cx={xScale(currentDate)}
-				cy={usableArea.top - 10}
-				r="5"
-				fill="#ff6b6b"
-				class="progress-indicator"
-			/>
+			<g class="progress-indicator">
+				<line
+					x1={xScale(currentDate)}
+					x2={xScale(currentDate)}
+					y1={usableArea.top}
+					y2={usableArea.bottom}
+					stroke="#667eea"
+					stroke-width="3"
+					stroke-dasharray="5,5"
+					opacity="0.8"
+					class="progress-line"
+				/>
+				<circle
+					cx={xScale(currentDate)}
+					cy={usableArea.top - 15}
+					r="6"
+					fill="#667eea"
+					class="progress-dot"
+				/>
+				<text
+					x={xScale(currentDate)}
+					y={usableArea.top - 25}
+					text-anchor="middle"
+					font-size="11"
+					font-weight="600"
+					fill="#667eea"
+				>
+					{d3.timeFormat('%b %d')(currentDate)}
+				</text>
+			</g>
 		{/if}
 
 		<!-- Axes -->
@@ -261,13 +282,24 @@
 		font-family: Arial, sans-serif;
 		font-size: 12px;
 	}
+
 	.tariff-line {
-		transition: d 0.3s ease;
+		transition: opacity 0.3s ease;
 	}
+
+	.progress-line {
+		transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+	}
+
+	.progress-dot {
+		transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+	}
+
 	.axes,
 	.axis-label {
 		color: #333;
 	}
+
 	.chart-title {
 		font-size: 16px;
 		font-weight: bold;
