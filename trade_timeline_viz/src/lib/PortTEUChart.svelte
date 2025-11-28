@@ -7,13 +7,25 @@
 		currentDate: Date | null;
 		height: number;
 		width: number;
+		onDateSelect?: (date: Date) => void;
 	};
-	let { data, currentDate, height, width }: Props = $props();
+	let { data, currentDate, height, width, onDateSelect }: Props = $props();
 
 	// SVG elements
-	let svgElement: SVGSVGElement;
-	let xAxis: SVGGElement;
-	let yAxis: SVGGElement;
+	let svgElement: SVGSVGElement = $state()!;
+	let xAxis: SVGGElement = $state()!;
+	let yAxis: SVGGElement = $state()!;
+
+	// Tooltip state
+	type TooltipData = {
+		x: number;
+		y: number;
+		date: Date;
+		long_beach: number;
+		los_angeles: number;
+		ny_nj: number;
+	};
+	let tooltipData: TooltipData | null = $state(null);
 
 	// Margins
 	const margin = { top: 40, right: 120, bottom: 60, left: 80 };
@@ -108,42 +120,89 @@
 		}
 	});
 
-	// Smooth transitions for line paths
+	// Get the last visible data point for endpoint labels
+	const lastDataPoint = $derived(visibleMonthlyData.length > 0 ? visibleMonthlyData[visibleMonthlyData.length - 1] : null);
+
+	// Update line paths and endpoints with shared transition for perfect sync
 	$effect(() => {
 		if (!svgElement || visibleMonthlyData.length === 0) return;
 
 		const svg = d3.select(svgElement);
 
-		svg.select('.line-long-beach')
-			.transition()
-			.duration(300)
-			.ease(d3.easeCubicInOut)
-			.attr('d', lineLongBeach(visibleMonthlyData) || '');
+		// Create a single shared transition for all elements
+		const t = svg.transition().duration(100).ease(d3.easeLinear);
 
-		svg.select('.line-los-angeles')
-			.transition()
-			.duration(300)
-			.ease(d3.easeCubicInOut)
-			.attr('d', lineLosAngeles(visibleMonthlyData) || '');
+		// Update all lines with shared transition
+		svg.select('.line-long-beach').transition(t).attr('d', lineLongBeach(visibleMonthlyData) || '');
+		svg.select('.line-los-angeles').transition(t).attr('d', lineLosAngeles(visibleMonthlyData) || '');
+		svg.select('.line-ny-nj').transition(t).attr('d', lineNYNJ(visibleMonthlyData) || '');
 
-		svg.select('.line-ny-nj')
-			.transition()
-			.duration(300)
-			.ease(d3.easeCubicInOut)
-			.attr('d', lineNYNJ(visibleMonthlyData) || '');
+		// Update endpoint circles and labels with same shared transition
+		if (lastDataPoint) {
+			// Long Beach endpoint
+			svg.select('.endpoint-long-beach').transition(t)
+				.attr('cx', xScale(lastDataPoint.date))
+				.attr('cy', yScale(lastDataPoint.long_beach_teu));
+			svg.select('.label-long-beach').transition(t)
+				.attr('x', xScale(lastDataPoint.date) + 10)
+				.attr('y', yScale(lastDataPoint.long_beach_teu) + 4)
+				.text(d3.format(',')(lastDataPoint.long_beach_teu));
+
+			// Los Angeles endpoint
+			svg.select('.endpoint-los-angeles').transition(t)
+				.attr('cx', xScale(lastDataPoint.date))
+				.attr('cy', yScale(lastDataPoint.ca_los_angeles_teu));
+			svg.select('.label-los-angeles').transition(t)
+				.attr('x', xScale(lastDataPoint.date) + 10)
+				.attr('y', yScale(lastDataPoint.ca_los_angeles_teu) + 4)
+				.text(d3.format(',')(lastDataPoint.ca_los_angeles_teu));
+
+			// NY & NJ endpoint
+			svg.select('.endpoint-ny-nj').transition(t)
+				.attr('cx', xScale(lastDataPoint.date))
+				.attr('cy', yScale(lastDataPoint.ca_ny_nj_teu));
+			svg.select('.label-ny-nj').transition(t)
+				.attr('x', xScale(lastDataPoint.date) + 10)
+				.attr('y', yScale(lastDataPoint.ca_ny_nj_teu) + 4)
+				.text(d3.format(',')(lastDataPoint.ca_ny_nj_teu));
+		}
 	});
 
-	// Line colors
+	// Line colors (brighter for better visibility)
 	const colors = {
-		long_beach: '#e74c3c',
-		los_angeles: '#3498db',
-		ny_nj: '#2ecc71'
+		long_beach: '#e63946',    // Bright red
+		los_angeles: '#2563eb',   // Bright blue
+		ny_nj: '#16a34a'          // Bright green
 	};
+
+	// Event handlers for data points
+	function handlePointHover(event: MouseEvent, d: TimelineData) {
+		const rect = svgElement.getBoundingClientRect();
+		tooltipData = {
+			x: event.clientX - rect.left,
+			y: event.clientY - rect.top,
+			date: d.date,
+			long_beach: d.long_beach_teu,
+			los_angeles: d.ca_los_angeles_teu,
+			ny_nj: d.ca_ny_nj_teu
+		};
+	}
+
+	function handlePointLeave() {
+		tooltipData = null;
+	}
+
+	function handlePointClick(d: TimelineData) {
+		if (onDateSelect) {
+			onDateSelect(d.date);
+		}
+	}
 </script>
 
 {#if monthlyData.length > 0}
-	<svg bind:this={svgElement} {width} {height} class="chart-svg">
-		<!-- Grid lines -->
+	<div class="chart-container" style="position: relative; width: {width}px; height: {height}px;">
+		<svg bind:this={svgElement} {width} {height} class="chart-svg">
+			<!-- Grid lines -->
 		<g class="grid-lines">
 			{#each yScale.ticks(8) as tick}
 				<line
@@ -185,39 +244,101 @@
 			/>
 		</g>
 
-		<!-- Progress indicator line (only show if current date is first of month) -->
-		{#if currentDate && currentDate.getDate() === 1}
-			<g class="progress-indicator">
-				<line
-					x1={xScale(currentDate)}
-					x2={xScale(currentDate)}
-					y1={usableArea.top}
-					y2={usableArea.bottom}
-					stroke="#667eea"
-					stroke-width="3"
-					stroke-dasharray="5,5"
-					opacity="0.8"
-					class="progress-line"
-				/>
+		<!-- Data points for each month (interactive) -->
+		<g class="data-points">
+			{#each visibleMonthlyData as d}
+				<!-- Long Beach data point -->
 				<circle
-					cx={xScale(currentDate)}
-					cy={usableArea.top - 15}
-					r="6"
-					fill="#667eea"
-					class="progress-dot"
+					cx={xScale(d.date)}
+					cy={yScale(d.long_beach_teu)}
+					r="4"
+					fill={colors.long_beach}
+					stroke="white"
+					stroke-width="1"
+					class="data-point"
+					role="button"
+					tabindex="0"
+					onmouseenter={(e) => handlePointHover(e, d)}
+					onmouseleave={handlePointLeave}
+					onclick={() => handlePointClick(d)}
+					onkeydown={(e) => e.key === 'Enter' && handlePointClick(d)}
 				/>
-				<text
-					x={xScale(currentDate)}
-					y={usableArea.top - 25}
-					text-anchor="middle"
-					font-size="11"
-					font-weight="600"
-					fill="#667eea"
-				>
-					{d3.timeFormat('%b %Y')(currentDate)}
-				</text>
-			</g>
-		{/if}
+				<!-- Los Angeles data point -->
+				<circle
+					cx={xScale(d.date)}
+					cy={yScale(d.ca_los_angeles_teu)}
+					r="4"
+					fill={colors.los_angeles}
+					stroke="white"
+					stroke-width="1"
+					class="data-point"
+					role="button"
+					tabindex="0"
+					onmouseenter={(e) => handlePointHover(e, d)}
+					onmouseleave={handlePointLeave}
+					onclick={() => handlePointClick(d)}
+					onkeydown={(e) => e.key === 'Enter' && handlePointClick(d)}
+				/>
+				<!-- NY & NJ data point -->
+				<circle
+					cx={xScale(d.date)}
+					cy={yScale(d.ca_ny_nj_teu)}
+					r="4"
+					fill={colors.ny_nj}
+					stroke="white"
+					stroke-width="1"
+					class="data-point"
+					role="button"
+					tabindex="0"
+					onmouseenter={(e) => handlePointHover(e, d)}
+					onmouseleave={handlePointLeave}
+					onclick={() => handlePointClick(d)}
+					onkeydown={(e) => e.key === 'Enter' && handlePointClick(d)}
+				/>
+			{/each}
+		</g>
+
+		<!-- Endpoint circles and value labels (positions managed by D3 transitions) -->
+		<g class="endpoints">
+			<!-- Long Beach endpoint -->
+			<circle
+				r="5"
+				fill={colors.long_beach}
+				class="endpoint-dot endpoint-long-beach"
+			/>
+			<text
+				font-size="11"
+				font-weight="600"
+				fill={colors.long_beach}
+				class="label-long-beach"
+			></text>
+
+			<!-- Los Angeles endpoint -->
+			<circle
+				r="5"
+				fill={colors.los_angeles}
+				class="endpoint-dot endpoint-los-angeles"
+			/>
+			<text
+				font-size="11"
+				font-weight="600"
+				fill={colors.los_angeles}
+				class="label-los-angeles"
+			></text>
+
+			<!-- NY & NJ endpoint -->
+			<circle
+				r="5"
+				fill={colors.ny_nj}
+				class="endpoint-dot endpoint-ny-nj"
+			/>
+			<text
+				font-size="11"
+				font-weight="600"
+				fill={colors.ny_nj}
+				class="label-ny-nj"
+			></text>
+		</g>
 
 		<!-- Axes -->
 		<g class="axes">
@@ -280,25 +401,93 @@
 		>
 			Data available through August 2025
 		</text>
-	</svg>
+		</svg>
+
+		<!-- Tooltip -->
+		{#if tooltipData}
+			<div
+				class="tooltip"
+				style="left: {tooltipData.x + 15}px; top: {tooltipData.y - 10}px;"
+			>
+				<div class="tooltip-date">{d3.timeFormat('%B %Y')(tooltipData.date)}</div>
+				<div class="tooltip-row">
+					<span class="tooltip-label" style="color: {colors.long_beach}">Long Beach:</span>
+					<span class="tooltip-value" style="color: {colors.long_beach}">{d3.format(',')(tooltipData.long_beach)} TEU</span>
+				</div>
+				<div class="tooltip-row">
+					<span class="tooltip-label" style="color: {colors.los_angeles}">Los Angeles:</span>
+					<span class="tooltip-value" style="color: {colors.los_angeles}">{d3.format(',')(tooltipData.los_angeles)} TEU</span>
+				</div>
+				<div class="tooltip-row">
+					<span class="tooltip-label" style="color: {colors.ny_nj}">NY & NJ:</span>
+					<span class="tooltip-value" style="color: {colors.ny_nj}">{d3.format(',')(tooltipData.ny_nj)} TEU</span>
+				</div>
+				<div class="tooltip-hint">Click to jump to this date</div>
+			</div>
+		{/if}
+	</div>
 {/if}
 
 <style>
+	.chart-container {
+		position: relative;
+	}
+
 	.chart-svg {
 		font-family: Arial, sans-serif;
 		font-size: 12px;
 	}
 
-	.teu-line {
-		transition: opacity 0.3s ease;
+	.data-point {
+		cursor: pointer;
+		transition: r 0.15s ease;
 	}
 
-	.progress-line {
-		transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+	.data-point:hover {
+		r: 6;
 	}
 
-	.progress-dot {
-		transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+	.tooltip {
+		position: absolute;
+		background: white;
+		border: 1px solid #ccc;
+		border-radius: 6px;
+		padding: 8px 12px;
+		font-size: 12px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		pointer-events: none;
+		z-index: 100;
+		white-space: nowrap;
+	}
+
+	.tooltip-date {
+		font-weight: 600;
+		color: #333;
+		margin-bottom: 6px;
+		padding-bottom: 4px;
+		border-bottom: 1px solid #eee;
+	}
+
+	.tooltip-row {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		margin: 2px 0;
+	}
+
+	.tooltip-label {
+		font-size: 11px;
+	}
+
+	.tooltip-value {
+		font-weight: 600;
+	}
+
+	.tooltip-hint {
+		font-size: 10px;
+		color: #888;
+		margin-top: 6px;
+		font-style: italic;
 	}
 
 	.axes,

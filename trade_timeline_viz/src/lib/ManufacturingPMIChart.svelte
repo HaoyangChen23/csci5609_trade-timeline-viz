@@ -7,16 +7,20 @@
 		currentDate: Date | null;
 		height: number;
 		width: number;
+		onDateSelect?: (date: Date) => void;
 	};
-	let { data, currentDate, height, width }: Props = $props();
+	let { data, currentDate, height, width, onDateSelect }: Props = $props();
 
 	// SVG elements
-	let svgElement: SVGSVGElement;
-	let xAxis: SVGGElement;
-	let yAxis: SVGGElement;
+	let svgElement: SVGSVGElement = $state()!;
+	let xAxis: SVGGElement = $state()!;
+	let yAxis: SVGGElement = $state()!;
+
+	// Tooltip state
+	let tooltipData: { x: number; y: number; date: Date; value: number } | null = $state(null);
 
 	// Margins
-	const margin = { top: 40, right: 60, bottom: 60, left: 80 };
+	const margin = { top: 40, right: 120, bottom: 60, left: 80 };
 	const usableArea = $derived({
 		top: margin.top,
 		right: width - margin.right,
@@ -95,34 +99,74 @@
 		}
 	});
 
-	// Smooth transitions for line and area paths
+	// Get the last visible data point for endpoint labels
+	const lastDataPoint = $derived(visibleMonthlyData.length > 0 ? visibleMonthlyData[visibleMonthlyData.length - 1] : null);
+
+	// Update line paths and endpoints with shared transition for perfect sync
 	$effect(() => {
 		if (!svgElement || visibleMonthlyData.length === 0) return;
 
 		const svg = d3.select(svgElement);
 
-		// Transition line
-		svg.select('.pmi-line-path')
-			.transition()
-			.duration(300)
-			.ease(d3.easeCubicInOut)
-			.attr('d', pmiLine(visibleMonthlyData) || '');
+		// Create a single shared transition for all elements
+		const t = svg.transition().duration(100).ease(d3.easeLinear);
 
-		// Transition area
+		// Update line with shared transition
+		svg.select('.pmi-line-path').transition(t).attr('d', pmiLine(visibleMonthlyData) || '');
+
+		// Update area with shared transition
 		const contractionData = visibleMonthlyData.filter((d) => d.ism_manufacturing_pmi < 50);
-		svg.select('.pmi-area-path')
-			.transition()
-			.duration(300)
-			.ease(d3.easeCubicInOut)
-			.attr('d', pmiArea(contractionData) || '');
+		svg.select('.pmi-area-path').transition(t).attr('d', pmiArea(contractionData) || '');
+
+		// Update endpoint circle and label with same shared transition
+		if (lastDataPoint) {
+			const pmiValue = lastDataPoint.ism_manufacturing_pmi;
+			const pointColor = pmiValue < 50 ? '#d32f2f' : '#1976d2';
+
+			svg.select('.endpoint-pmi').transition(t)
+				.attr('cx', xScale(lastDataPoint.date))
+				.attr('cy', yScale(pmiValue))
+				.attr('fill', pointColor);
+
+			svg.select('.label-pmi').transition(t)
+				.attr('x', xScale(lastDataPoint.date) + 10)
+				.attr('y', yScale(pmiValue) + 4)
+				.attr('fill', pointColor)
+				.text(pmiValue.toFixed(1));
+		}
 	});
 
 	// Reference line at 50 (expansion/contraction threshold)
 	const threshold50 = $derived(yScale(50));
+
+	// Line color
+	const lineColor = '#1976d2';
+
+	// Event handlers for data points
+	function handlePointHover(event: MouseEvent, d: TimelineData) {
+		const rect = svgElement.getBoundingClientRect();
+		tooltipData = {
+			x: event.clientX - rect.left,
+			y: event.clientY - rect.top,
+			date: d.date,
+			value: d.ism_manufacturing_pmi
+		};
+	}
+
+	function handlePointLeave() {
+		tooltipData = null;
+	}
+
+	function handlePointClick(d: TimelineData) {
+		if (onDateSelect) {
+			onDateSelect(d.date);
+		}
+	}
 </script>
 
 {#if monthlyData.length > 0}
-	<svg bind:this={svgElement} {width} {height} class="chart-svg">
+	<div class="chart-container" style="position: relative; width: {width}px; height: {height}px;">
+		<svg bind:this={svgElement} {width} {height} class="chart-svg">
 		<!-- Grid lines -->
 		<g class="grid-lines">
 			{#each yScale.ticks(8) as tick}
@@ -164,56 +208,46 @@
 			<path
 				class="pmi-line pmi-line-path"
 				fill="none"
-				stroke="#1976d2"
-				stroke-width="3"
+				stroke={lineColor}
+				stroke-width="2.5"
 			/>
+		</g>
 
-			<!-- Data points with fade-in animation -->
+		<!-- Data points colored by threshold -->
+		<g class="data-points">
 			{#each visibleMonthlyData as d}
 				<circle
 					cx={xScale(d.date)}
 					cy={yScale(d.ism_manufacturing_pmi)}
 					r="4"
 					fill={d.ism_manufacturing_pmi < 50 ? '#d32f2f' : '#1976d2'}
+					stroke="white"
+					stroke-width="1"
 					class="data-point"
-					style="animation: fadeIn 0.3s ease-in-out;"
+					role="button"
+					tabindex="0"
+					onmouseenter={(e) => handlePointHover(e, d)}
+					onmouseleave={handlePointLeave}
+					onclick={() => handlePointClick(d)}
+					onkeydown={(e) => e.key === 'Enter' && handlePointClick(d)}
 				/>
 			{/each}
 		</g>
 
-		<!-- Progress indicator line (only show if current date is first of month) -->
-		{#if currentDate && currentDate.getDate() === 1}
-			<g class="progress-indicator">
-				<line
-					x1={xScale(currentDate)}
-					x2={xScale(currentDate)}
-					y1={usableArea.top}
-					y2={usableArea.bottom}
-					stroke="#667eea"
-					stroke-width="3"
-					stroke-dasharray="5,5"
-					opacity="0.8"
-					class="progress-line"
-				/>
-				<circle
-					cx={xScale(currentDate)}
-					cy={usableArea.top - 15}
-					r="6"
-					fill="#667eea"
-					class="progress-dot"
-				/>
-				<text
-					x={xScale(currentDate)}
-					y={usableArea.top - 25}
-					text-anchor="middle"
-					font-size="11"
-					font-weight="600"
-					fill="#667eea"
-				>
-					{d3.timeFormat('%b %Y')(currentDate)}
-				</text>
-			</g>
-		{/if}
+		<!-- Endpoint circle and value label (positions managed by D3 transitions) -->
+		<g class="endpoints">
+			<circle
+				r="5"
+				fill={lineColor}
+				class="endpoint-dot endpoint-pmi"
+			/>
+			<text
+				font-size="11"
+				font-weight="600"
+				fill={lineColor}
+				class="label-pmi"
+			></text>
+		</g>
 
 		<!-- Axes -->
 		<g class="axes">
@@ -256,44 +290,80 @@
 			<text x="10" y="35" font-size="10" fill="#1976d2">Above 50 = Expansion</text>
 			<text x="10" y="50" font-size="10" fill="#d32f2f">Below 50 = Contraction</text>
 		</g>
-	</svg>
+		</svg>
+
+		<!-- Tooltip -->
+		{#if tooltipData}
+			<div
+				class="tooltip"
+				style="left: {tooltipData.x + 15}px; top: {tooltipData.y - 10}px;"
+			>
+				<div class="tooltip-date">{d3.timeFormat('%B %Y')(tooltipData.date)}</div>
+				<div class="tooltip-value" style="color: {tooltipData.value < 50 ? '#d32f2f' : '#1976d2'}">
+					PMI: {tooltipData.value.toFixed(1)}
+				</div>
+				<div class="tooltip-status" style="color: {tooltipData.value < 50 ? '#d32f2f' : '#1976d2'}">
+					{tooltipData.value < 50 ? 'Contraction' : 'Expansion'}
+				</div>
+				<div class="tooltip-hint">Click to jump to this date</div>
+			</div>
+		{/if}
+	</div>
 {/if}
 
 <style>
+	.chart-container {
+		position: relative;
+	}
+
 	.chart-svg {
 		font-family: Arial, sans-serif;
 		font-size: 12px;
 	}
 
-	.pmi-line {
-		transition: opacity 0.3s ease;
-	}
-
 	.data-point {
-		transition: all 0.2s ease;
+		cursor: pointer;
+		transition: r 0.15s ease;
 	}
 
 	.data-point:hover {
 		r: 6;
 	}
 
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-			transform: scale(0.8);
-		}
-		to {
-			opacity: 1;
-			transform: scale(1);
-		}
+	.tooltip {
+		position: absolute;
+		background: white;
+		border: 1px solid #ccc;
+		border-radius: 6px;
+		padding: 8px 12px;
+		font-size: 12px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		pointer-events: none;
+		z-index: 100;
+		white-space: nowrap;
 	}
 
-	.progress-line {
-		transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+	.tooltip-date {
+		font-weight: 600;
+		color: #333;
+		margin-bottom: 4px;
 	}
 
-	.progress-dot {
-		transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+	.tooltip-value {
+		font-weight: 600;
+		font-size: 14px;
+	}
+
+	.tooltip-status {
+		font-size: 11px;
+		margin-top: 2px;
+	}
+
+	.tooltip-hint {
+		font-size: 10px;
+		color: #888;
+		margin-top: 6px;
+		font-style: italic;
 	}
 
 	.axes,

@@ -17,6 +17,9 @@
   import * as d3 from "d3";
 
   // Progress variables for other scroll sections
+  let tariffRatesScrollProgress = $state(0);
+  let portTEUScrollProgress = $state(0);
+  let pmiScrollProgress = $state(0);
   let tradeBalanceScrollProgress = $state(0);
   let autoIncomeScrollProgress = $state(0);
 
@@ -94,12 +97,36 @@
     };
   }
 
+  // Handle date selection from charts - jump timeline to that date
+  function handleDateSelect(date: Date) {
+    // Find the index of the date in filteredTimelineData (or closest match)
+    let closestIndex = 0;
+    let closestDiff = Infinity;
+
+    filteredTimelineData.forEach((d, index) => {
+      const diff = Math.abs(d.date.getTime() - date.getTime());
+      if (diff < closestDiff) {
+        closestDiff = diff;
+        closestIndex = index;
+      }
+    });
+
+    // Update the current index
+    currentIndex = closestIndex;
+
+    // Scroll the timeline to the selected item
+    const targetElement = timelineItemElements.get(closestIndex);
+    if (targetElement && timelineScrollContainer) {
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
   const chartHeight = 500;
   const chartWidth = 900;
 </script>
 
-<h2>Interactive Trade Timeline & Visualizations (2024-2025)</h2>
-<p>
+<h2 class="timeline-title">Interactive Trade Timeline & Visualizations (2024-2025)</h2>
+<p class="timeline-description">
   Explore the comprehensive timeline of trade events and their impacts on tariff rates, port activity,
   and manufacturing. Scroll through to see how events unfold chronologically with synchronized visualizations.
 </p>
@@ -120,15 +147,15 @@
     <div class="charts-scroll-container">
       <div class="visualizations-stack">
         <div class="chart-wrapper">
-          <TariffRatesChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} />
+          <TariffRatesChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} onDateSelect={handleDateSelect} />
         </div>
 
         <div class="chart-wrapper">
-          <PortTEUChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} />
+          <PortTEUChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} onDateSelect={handleDateSelect} />
         </div>
 
         <div class="chart-wrapper">
-          <ManufacturingPMIChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} />
+          <ManufacturingPMIChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} onDateSelect={handleDateSelect} />
         </div>
       </div>
     </div>
@@ -136,6 +163,76 @@
 {:else}
   <div class="loading">Loading timeline data...</div>
 {/if}
+
+<!-- Detailed Tariff Rates Section -->
+<div class="section-divider"></div>
+<h2>US-China Tariff Rate Trends (2024-2025)</h2>
+<p>
+  Track the escalation of tariff rates between the United States and China, as well as their respective rates
+  toward the rest of the world. This visualization shows how trade tensions evolved over time.
+</p>
+
+<Scroll bind:progress={tariffRatesScrollProgress} id="tariffRates">
+  <div class="info-section">
+    <h3>Key Insight</h3>
+    <p>
+      US tariffs on Chinese goods surged dramatically from around 20% to over 140% following the April 2025
+      tariff announcements. China retaliated with proportional increases on US goods. Both countries maintained
+      relatively stable tariff rates toward the rest of the world, indicating the targeted nature of the trade conflict.
+    </p>
+  </div>
+
+  <div slot="viz" class="chart-container">
+    <TariffRatesChart data={timelineData} currentDate={new Date('2025-12-31')} height={chartHeight} width={chartWidth} />
+  </div>
+</Scroll>
+
+<!-- Detailed Port TEU Section -->
+<div class="section-divider"></div>
+<h2>Front-loading Effect at U.S. Ports (2024-2025)</h2>
+<p>
+  Examine container throughput (measured in Twenty-foot Equivalent Units) at major US ports.
+  This metric reveals how businesses adjusted their shipping patterns in response to tariff announcements.
+</p>
+
+<Scroll bind:progress={portTEUScrollProgress} id="portTEU">
+  <div class="info-section">
+    <h3>Key Insight</h3>
+    <p>
+      Prior to tariff implementation, US ports experienced a significant surge in container traffic as businesses
+      rushed to import goods before higher tariffs took effect - a phenomenon known as "front-loading."
+      The ports of Long Beach and Los Angeles showed the most dramatic increases, followed by a sharp decline
+      after tariffs were fully implemented.
+    </p>
+  </div>
+
+  <div slot="viz" class="chart-container">
+    <PortTEUChart data={timelineData} currentDate={new Date('2025-12-31')} height={chartHeight} width={chartWidth} />
+  </div>
+</Scroll>
+
+<!-- Detailed Manufacturing PMI Section -->
+<div class="section-divider"></div>
+<h2>Manufacturing PMI Trends (2024-2025)</h2>
+<p>
+  The ISM Manufacturing Purchasing Managers' Index (PMI) indicates the health of the manufacturing sector.
+  A reading above 50 signals expansion, while below 50 indicates contraction.
+</p>
+
+<Scroll bind:progress={pmiScrollProgress} id="pmi">
+  <div class="info-section">
+    <h3>Key Insight</h3>
+    <p>
+      Following the tariff announcements in early 2025, the Manufacturing PMI dropped below the critical 50 threshold,
+      signaling a contraction in the manufacturing sector. This decline reflects increased costs for imported materials
+      and components, as well as uncertainty in global supply chains caused by the trade tensions.
+    </p>
+  </div>
+
+  <div slot="viz" class="chart-container">
+    <ManufacturingPMIChart data={timelineData} currentDate={new Date('2025-12-31')} height={chartHeight} width={chartWidth} />
+  </div>
+</Scroll>
 
 <!-- Trade Balance Section -->
 <div class="section-divider"></div>
@@ -213,6 +310,14 @@
     color: #2c3e50;
     font-size: 28px;
     font-weight: 700;
+  }
+
+  .timeline-title {
+    margin-top: 80px; /* Extra space to prevent overlapping with progress indicators */
+  }
+
+  .timeline-description {
+    margin-bottom: 30px;
   }
 
   p {
@@ -351,4 +456,5 @@
     font-size: 18px;
     color: #666;
   }
+
 </style>

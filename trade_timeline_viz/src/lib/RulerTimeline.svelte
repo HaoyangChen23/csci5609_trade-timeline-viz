@@ -85,12 +85,6 @@
 </script>
 
 <div class="timeline-container">
-	{#if currentDate}
-		<div class="current-date-indicator">
-			<span class="indicator-badge">Current: {d3.timeFormat('%B %d, %Y')(currentDate)}</span>
-		</div>
-	{/if}
-
 	<div class="timeline-ruler">
 		<!-- Top spacer to allow first item to reach center -->
 		<div class="timeline-spacer"></div>
