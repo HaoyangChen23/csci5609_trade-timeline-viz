@@ -39,3 +39,6 @@ export {PortTEUChart}
 
 import ManufacturingPMIChart from './ManufacturingPMIChart.svelte'
 export {ManufacturingPMIChart}
+
+import USInvestmentMap from './USInvestmentMap.svelte'
+export {USInvestmentMap}

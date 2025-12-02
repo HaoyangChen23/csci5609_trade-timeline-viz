@@ -13,7 +13,7 @@
   };
   let { tariffs, pmiData, teuData, incomeData, globalTariffData, tradeBalanceData, timelineData }: Props = $props();
 
-  import { Scroll, RulerTimeline, TariffRatesChart, PortTEUChart, ManufacturingPMIChart, AutoIncomeBarChart, GlobeTariffViz, TradeBalanceChart, PMILineChart, TEUMultiLineChart } from "$lib";
+  import { Scroll, RulerTimeline, TariffRatesChart, PortTEUChart, ManufacturingPMIChart, AutoIncomeBarChart, GlobeTariffViz, TradeBalanceChart, PMILineChart, TEUMultiLineChart, USInvestmentMap } from "$lib";
   import * as d3 from "d3";
 
   // Progress variables for other scroll sections
@@ -22,6 +22,7 @@
   let pmiScrollProgress = $state(0);
   let tradeBalanceScrollProgress = $state(0);
   let autoIncomeScrollProgress = $state(0);
+  let investmentMapScrollProgress = $state(0);
 
   // Timeline scroll state (independent from page scroll)
   let timelineScrollContainer: HTMLElement;
@@ -135,27 +136,43 @@
 {#if filteredTimelineData.length > 0}
   <div class="timeline-charts-container">
     <!-- Timeline Story (Left side) - Scrollable Container -->
-    <div
-      class="timeline-scroll-container"
-      bind:this={timelineScrollContainer}
-      onscroll={handleTimelineScroll}
-    >
-      <RulerTimeline data={filteredTimelineData} {currentDate} {registerTimelineItem} />
+    <div class="timeline-column">
+      <div class="scroll-indicator">
+        <span class="scroll-icon">↕</span>
+        <span class="scroll-text">Scroll timeline to navigate</span>
+      </div>
+      <div
+        class="timeline-scroll-container"
+        bind:this={timelineScrollContainer}
+        onscroll={handleTimelineScroll}
+      >
+        <RulerTimeline data={filteredTimelineData} {currentDate} {registerTimelineItem} />
+      </div>
     </div>
 
     <!-- Visualizations (Right side) - Scrollable Container -->
-    <div class="charts-scroll-container">
-      <div class="visualizations-stack">
-        <div class="chart-wrapper">
-          <TariffRatesChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} onDateSelect={handleDateSelect} />
-        </div>
+    <div class="charts-column">
+      <div class="scroll-indicator">
+        <span class="scroll-icon">↕</span>
+        <span class="scroll-text">Scroll to view all charts</span>
+      </div>
+      <div class="interaction-hint">
+        <span class="hint-icon">👆</span>
+        <span class="hint-text">Click data points to jump to that date in timeline</span>
+      </div>
+      <div class="charts-scroll-container">
+        <div class="visualizations-stack">
+          <div class="chart-wrapper">
+            <TariffRatesChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} onDateSelect={handleDateSelect} />
+          </div>
 
-        <div class="chart-wrapper">
-          <PortTEUChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} onDateSelect={handleDateSelect} />
-        </div>
+          <div class="chart-wrapper">
+            <PortTEUChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} onDateSelect={handleDateSelect} />
+          </div>
 
-        <div class="chart-wrapper">
-          <ManufacturingPMIChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} onDateSelect={handleDateSelect} />
+          <div class="chart-wrapper">
+            <ManufacturingPMIChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth} onDateSelect={handleDateSelect} />
+          </div>
         </div>
       </div>
     </div>
@@ -278,6 +295,29 @@
   </div>
 </Scroll>
 
+<!-- US Investment Map Section -->
+<div class="section-divider"></div>
+<h2>South Korea and Taiwan Companies Under Construction in the US</h2>
+<p>
+  Major semiconductor and EV battery investments by South Korean and Taiwan companies showing the reshoring of critical supply chains to the United States.
+</p>
+
+<Scroll bind:progress={investmentMapScrollProgress} id="investmentMap">
+  <div class="info-section">
+    <h3>Key Insight</h3>
+    <p>
+      In response to trade tensions and supply chain vulnerabilities, major Asian technology companies have committed over $100 billion
+      in US manufacturing investments. TSMC's $40B Arizona semiconductor fabs and Samsung's $17B Texas facility represent the largest
+      technology investments in US history, while South Korean battery manufacturers are building the foundation for America's EV transition.
+    </p>
+  </div>
+
+  <div slot="viz" class="chart-container">
+    <USInvestmentMap width={900} height={600} />
+    <p class="map-source">Source: Reuters / Company Announcements</p>
+  </div>
+</Scroll>
+
 <!-- Global Tariff Map Section - MOVED TO TOP OF PAGE (see +page.svelte) -->
 <!--
 <div class="section-divider"></div>
@@ -336,6 +376,100 @@
     gap: 40px;
     margin: 40px 0;
     min-height: 80vh;
+  }
+
+  .timeline-column,
+  .charts-column {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .scroll-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+    50% {
+      box-shadow: 0 2px 12px rgba(102, 126, 234, 0.5);
+    }
+  }
+
+  .scroll-icon {
+    font-size: 18px;
+    font-weight: bold;
+    animation: bounce-vertical 1.5s ease-in-out infinite;
+  }
+
+  @keyframes bounce-vertical {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-3px);
+    }
+  }
+
+  .scroll-text {
+    user-select: none;
+  }
+
+  .interaction-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(245, 87, 108, 0.3);
+    animation: pulse-glow-pink 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow-pink {
+    0%, 100% {
+      box-shadow: 0 2px 8px rgba(245, 87, 108, 0.3);
+    }
+    50% {
+      box-shadow: 0 2px 12px rgba(245, 87, 108, 0.5);
+    }
+  }
+
+  .hint-icon {
+    font-size: 16px;
+    animation: wiggle 1s ease-in-out infinite;
+  }
+
+  @keyframes wiggle {
+    0%, 100% {
+      transform: rotate(0deg);
+    }
+    25% {
+      transform: rotate(-10deg);
+    }
+    75% {
+      transform: rotate(10deg);
+    }
+  }
+
+  .hint-text {
+    user-select: none;
   }
 
   /* Scrollable containers for timeline and charts */
@@ -457,6 +591,14 @@
     padding: 60px;
     font-size: 18px;
     color: #666;
+  }
+
+  .map-source {
+    font-size: 11px;
+    text-align: right;
+    color: #999;
+    margin-top: 10px;
+    width: 100%;
   }
 
 </style>
