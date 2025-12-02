@@ -278,7 +278,8 @@
   </div>
 </Scroll>
 
-<!-- Global Tariff Map Section -->
+<!-- Global Tariff Map Section - MOVED TO TOP OF PAGE (see +page.svelte) -->
+<!--
 <div class="section-divider"></div>
 <h2>Global Tariff Impact: 3D World View</h2>
 <p>
@@ -302,6 +303,7 @@
     {/if}
   </div>
 </div>
+-->
 
 <style>
   h2 {

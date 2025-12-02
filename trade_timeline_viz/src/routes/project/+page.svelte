@@ -4,6 +4,7 @@
   import type { TTariff, TPMI, TTEU, AutoIncome, TariffData, TradeBalance, TimelineEvent, TimelineData } from "../../types";
   import StoryOpen from "./StoryOpen.svelte";
   import Scrolly2D from "./Scrolly2D.svelte";
+  import { GlobeTariffViz } from "$lib";
 
   let tariffs: TTariff[] = $state([]);
   let pmiData: TPMI[] = $state([]);
@@ -222,6 +223,23 @@
 
 <div class="page-wrapper">
   <StoryOpen />
+
+  <!-- 3D Globe Section - Eye-catching visualization right after the story intro -->
+  <div class="globe-hero-section">
+    <h2>Global Tariff Impact: 3D World View</h2>
+    <p>
+      Explore US tariff rates across the world in an interactive 3D globe. Taller bars represent higher tariff rates.
+      Drag to rotate the globe and zoom with your scroll wheel.
+    </p>
+    <div class="globe-hero-wrapper">
+      {#if globalTariffData.length > 0}
+        <GlobeTariffViz data={globalTariffData} height={600} width={900} />
+      {:else}
+        <div class="loading">Loading global tariff data...</div>
+      {/if}
+    </div>
+  </div>
+
   <div class="container">
     <Scrolly2D {tariffs} {pmiData} {teuData} {incomeData} {globalTariffData} {tradeBalanceData} {timelineData}/>
   </div>
@@ -238,6 +256,44 @@
     margin: 0;
     padding: 0;
     overflow-x: clip; /* Use clip instead of hidden to allow sticky */
+  }
+
+  .globe-hero-section {
+    width: 80vw;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 60px 10px;
+    box-sizing: border-box;
+    text-align: center;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  }
+
+  .globe-hero-section h2 {
+    color: #fff;
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 15px;
+  }
+
+  .globe-hero-section p {
+    color: #b0b0c0;
+    font-size: 16px;
+    line-height: 1.6;
+    max-width: 700px;
+    margin: 0 auto 30px auto;
+  }
+
+  .globe-hero-wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 60px;
+    font-size: 18px;
+    color: #888;
   }
 
   .container {
