@@ -390,17 +390,17 @@
 			Front-loading Effect at U.S. Ports
 		</text>
 
-		<!-- Note about data availability -->
-		<text
-			x={usableArea.right}
-			y={usableArea.bottom + 45}
-			text-anchor="end"
-			font-size="10"
-			fill="#999"
-			font-style="italic"
-		>
-			Data available through August 2025
-		</text>
+<!--		&lt;!&ndash; Note about data availability &ndash;&gt;-->
+<!--		<text-->
+<!--			x={usableArea.right}-->
+<!--			y={usableArea.bottom + 45}-->
+<!--			text-anchor="end"-->
+<!--			font-size="10"-->
+<!--			fill="#999"-->
+<!--			font-style="italic"-->
+<!--		>-->
+<!--			Source: Department of Transportation; Data available through August 2025-->
+<!--		</text>-->
 		</svg>
 
 		<!-- Tooltip -->

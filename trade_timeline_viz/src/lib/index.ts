@@ -40,5 +40,11 @@ export {PortTEUChart}
 import ManufacturingPMIChart from './ManufacturingPMIChart.svelte'
 export {ManufacturingPMIChart}
 
+import InflationChart from './InflationChart.svelte'
+export {InflationChart}
+
+import SoybeanChart from "$lib/SoybeanChart.svelte";
+export {SoybeanChart}
+
 import USInvestmentMap from './USInvestmentMap.svelte'
 export {USInvestmentMap}

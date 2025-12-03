@@ -1,179 +1,282 @@
 <script lang="ts">
-    import * as d3 from 'd3';
-    import type { AutoIncome } from './types'; 
+    import * as d3 from "d3";
 
-    type Props = {
-        data: AutoIncome[]; 
-        width?: number;
-        height?: number;
-    };
-    let { data, width = 900, height = 500 }: Props = $props();
-
-    const margin = { top: 60, right: 30, bottom: 60, left: 60 };
-    const usableArea = {
-        top: margin.top,
-        right: width - margin.right,
-        bottom: height - margin.bottom,
-        left: margin.left
-    };
-
-    const keys = ['operatingIncome', 'impact'];
-
-    const processedData = $derived(
-        data.map((d) => ({
-            ...d,
-            impact: Math.abs(d.tariffImpact)
-        }))
-    );
-
-    const stackGenerator = $derived(d3.stack<any, string>().keys(keys));
-    const stackedData = $derived(stackGenerator(processedData));
-
-
-    const companies = $derived([...new Set(data.map((d) => d.company))]);
-    const quarters = $derived([...new Set(data.map((d) => d.quarter))]);
-    //Company names and quarters for scales    
-    const x0Scale = $derived(
-        d3.scaleBand()
-            .domain(companies)
-            .range([usableArea.left, usableArea.right])
-            .padding(0.2)
-    );
-    //Quarter scale within each company group    
-    const x1Scale = $derived(
-        d3.scaleBand()
-            .domain(quarters) 
-            .range([0, x0Scale.bandwidth()])
-            .padding(0.1)
-    );
-
-    const yMax = $derived(
-        d3.max(stackedData[stackedData.length - 1], (d) => d[1]) || 0
-    );
-
-    const yScale = $derived(
-        d3.scaleLinear()
-            .domain([0, yMax * 1.05])
-            .range([usableArea.bottom, usableArea.top])
-    );
-
-    const colorScale = $derived(
-        d3.scaleOrdinal<string>()
-            .domain(keys)
-            .range(['#007bff', '#cccccc'])
-    );
-
-    let xAxis: SVGGElement = $state();
-    let yAxis: SVGGElement = $state();
-
-    $effect(() => {
-        if (xAxis) {
-            d3.select(xAxis)
-                .call(d3.axisBottom(x0Scale))
-                .selectAll('.tick line')
-                .remove();
+    // Data Definition (Variance Analysis: Change on Left)
+    const companies = [
+        {
+            name: "Hyundai",
+            period: "Q2 2025",
+            currency: "KRW (Billions)",
+            data: [
+                { label: "Change in Op. Income", value: -677, type: "outcome" },
+                { label: "Tariff Cost", value: -828, type: "negative" },
+                { label: "FX Impact", value: 632, type: "positive" }
+            ]
+        },
+        {
+            name: "Kia",
+            period: "Q2 2025",
+            currency: "KRW (Billions)",
+            data: [
+                { label: "Change in Op. Income", value: -879, type: "outcome" },
+                { label: "Tariff Cost", value: -786, type: "negative" },
+                { label: "FX Impact", value: 501, type: "positive" }
+            ]
+        },
+        {
+            name: "Toyota",
+            period: "Q1 2026",
+            currency: "JPY (Billions)",
+            data: [
+                { label: "Change in Op. Income", value: -142.3, type: "outcome" },
+                { label: "Tariff Cost", value: -450, type: "negative" },
+                { label: "FX Impact", value: -165, type: "negative" }
+            ]
+        },
+        {
+            name: "Honda",
+            period: "Q1 2025",
+            currency: "JPY (Billions)",
+            data: [
+                { label: "Change in Op. Income", value: -243.4, type: "outcome" },
+                { label: "Tariff Cost", value: -124.6, type: "negative" },
+                { label: "FX Impact", value: -86.1, type: "negative" }
+            ]
+        },
+        {
+            name: "Ford",
+            period: "Q3 2025",
+            currency: "USD (Billions)",
+            data: [
+                { label: "Change in Adj. EBIT", value: 0.036, type: "outcome" },
+                { label: "Tariff Cost", value: -0.7, type: "negative" }
+            ]
         }
-        if (yAxis) {
-            d3.select(yAxis).call(d3.axisLeft(yScale));
-        }
-    });
+    ];
+
+    // Colors mapping
+    const colors = {
+        negative: "#dc3545",        // Red (Tariff/Loss)
+        positive: "#28a745",        // Green (Forex Gain)
+        outcome: "#007bff"          // Blue (Change/Result)
+    };
+
+    // Reduced Dimensions for Compact View
+    const cardWidth = 165;  // Reduced from 200
+    const cardHeight = 230; // Reduced from 280
+    const margin = { top: 35, right: 10, bottom: 50, left: 40 }; // Tighter margins
+
+    function wrapText(text: string) {
+        return text.split(/\s+/);
+    }
 </script>
 
-{#if data.length > 0}
-    <svg {width} {height} class="chart-svg">
-        <g class="grid-lines">
-            {#each yScale.ticks(10) as tick}
-                <line
-                    x1={usableArea.left}
-                    x2={usableArea.right}
-                    y1={yScale(tick)}
-                    y2={yScale(tick)}
-                    stroke="#e0e0e0"
-                    stroke-width="1"
-                    stroke-dasharray="3,3"
-                />
-            {/each}
-        </g>
+<div class="chart-container">
+    <div class="main-header">
+        <h2>Automaker First Earnings since Second Trump Tariff</h2>
+        <p class="subtitle">Operating income YoY comparison</p>
+    </div>
 
-        <g class="legend" transform="translate({usableArea.left}, {margin.top - 30})">
-            <rect x={0} y={0} width={12} height={12} fill={colorScale.range()[0]} />
-            <text x={18} y={11} class="legend-text">Operating Income</text>
-            <rect x={160} y={0} width={12} height={12} fill={colorScale.range()[1]} />
-            <text x={178} y={11} class="legend-text">Tariff Impact (Negative)</text>
-        </g>
+    <div class="grid-layout">
+        {#each companies as company}
+            {@const maxVal = Math.max(0, ...company.data.map(d => d.value))}
+            {@const minVal = Math.min(0, ...company.data.map(d => d.value))}
 
-        <g class="bars">
-            {#each stackedData as series}
-                {#each series as d, i}
-                    {@const original = processedData[i]}
-                    <rect
-                        x={x0Scale(original.company)! + x1Scale(original.quarter)!}
-                        y={yScale(d[1])}
-                        width={x1Scale.bandwidth()}
-                        height={yScale(d[0]) - yScale(d[1])}
-                        fill={colorScale(series.key)}
+            {@const yDomain = [minVal * 1.15, maxVal * 1.15]}
+
+            {@const yScale = d3.scaleLinear()
+                .domain(yDomain)
+                .range([cardHeight - margin.bottom, margin.top])
+            }
+
+            {@const xScale = d3.scaleBand()
+                .domain(company.data.map(d => d.label))
+                .range([margin.left, cardWidth - margin.right])
+                .padding(0.3)
+            }
+
+            <div class="card">
+                <div class="card-header">
+                    <strong>{company.name}</strong>
+                    <div class="period">({company.period})</div>
+                    <div class="currency">{company.currency}</div>
+                </div>
+
+                <svg width={cardWidth} height={cardHeight}>
+                    <line
+                            x1={margin.left}
+                            x2={cardWidth - margin.right}
+                            y1={yScale(0)}
+                            y2={yScale(0)}
+                            stroke="#333"
+                            stroke-width="1"
                     />
-                {/each}
-            {/each}
-        </g>
 
-        <g class="axes">
-            <g transform="translate(0, {usableArea.bottom})" bind:this={xAxis} />
-            <g transform="translate({usableArea.left}, 0)" bind:this={yAxis} />
-        </g>
+                    {#each yScale.ticks(5) as tick}
+                        {#if tick !== 0}
+                            <line
+                                    x1={margin.left}
+                                    x2={cardWidth - margin.right}
+                                    y1={yScale(tick)}
+                                    y2={yScale(tick)}
+                                    stroke="#eee"
+                                    stroke-dasharray="2,2"
+                            />
+                        {/if}
+                    {/each}
 
-        <g class="x-sub-labels">
-            {#each processedData as d}
-                <text
-                    x={x0Scale(d.company)! + x1Scale(d.quarter)! + x1Scale.bandwidth() / 2}
-                    y={usableArea.bottom + 18}
-                >
-                    {d.quarter.split('-')[0] || d.quarter.split(' ')[0]}
-                </text>
-            {/each}
-        </g>
+                    {#each company.data as d}
+                        <rect
+                                x={xScale(d.label)}
+                                y={Math.min(yScale(0), yScale(d.value))}
+                                width={xScale.bandwidth()}
+                                height={Math.abs(yScale(0) - yScale(d.value))}
+                                fill={colors[d.type as keyof typeof colors]}
+                                rx="2"
+                                ry="2"
+                        />
 
-        <text
-            class="axis-label"
-            transform="rotate(-90)"
-            y={15}
-            x={-(usableArea.top + usableArea.bottom) / 2}
-            text-anchor="middle"
-            font-size="14"
-            font-weight="600"
-        >
-            Operating Income (USD Millions)
-        </text>
-        <text
-            class="axis-label"
-            y={height - 10}
-            x={(usableArea.left + usableArea.right) / 2}
-            text-anchor="middle"
-            font-size="14"
-            font-weight="600"
-        >
-            Company
-        </text>
-    </svg>
-{/if}
+                        <text
+                                x={xScale(d.label)! + xScale.bandwidth() / 2}
+                                y={yScale(d.value) + (d.value >= 0 ? -5 : 10)}
+                                text-anchor="middle"
+                                font-size="9"
+                                font-weight="bold"
+                                fill="#222"
+                        >
+                            {d.value > 0 ? "+" : ""}{d3.format(company.name === 'Ford' ? ".3f" : ",.0f")(d.value)}
+                        </text>
+
+                        {@const lines = wrapText(d.label)}
+                        {#each lines as line, i}
+                            <text
+                                    x={xScale(d.label)! + xScale.bandwidth() / 2}
+                                    y={cardHeight - margin.bottom + 14 + (i * 10)}
+                                    text-anchor="middle"
+                                    font-size="8"
+                                    fill="#555"
+                            >
+                                {line}
+                            </text>
+                        {/each}
+                    {/each}
+
+                    <g transform="translate({margin.left}, 0)">
+                        {#each yScale.ticks(5) as tick}
+                            <text
+                                    x="-4"
+                                    y={yScale(tick)}
+                                    dy="0.32em"
+                                    text-anchor="end"
+                                    font-size="8"
+                                    fill="#999"
+                            >
+                                {d3.format("~s")(tick)}
+                            </text>
+                        {/each}
+                    </g>
+                </svg>
+            </div>
+        {/each}
+    </div>
+
+    <div class="legend">
+        <div class="item"><span class="box" style="background: {colors.outcome}"></span> Net Change / Loss</div>
+        <div class="item"><span class="box" style="background: {colors.negative}"></span> Negative Impact (Tariff/Loss)</div>
+        <div class="item"><span class="box" style="background: {colors.positive}"></span> Forex Gain</div>
+    </div>
+
+    <p class="source-label">Source: Company Filings</p>
+</div>
 
 <style>
-    .chart-svg {
-        font-family: Arial, sans-serif;
-        font-size: 12px;
+    .chart-container {
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: #fff;
+        padding: 15px; /* Reduced padding */
+        border-radius: 8px;
+        width: 100%;
+        max-width: 950px; /* Reduced max-width to keep it compact */
+        margin: 0 auto;
     }
-    .axes,
-    .axis-label {
-        color: #333;
-        fill: #333;
+
+    .main-header {
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
     }
-    .legend-text {
-        fill: #333;
-        font-size: 12px;
+
+    h2 { margin: 0 0 5px 0; color: #333; font-size: 18px; font-weight: 700; }
+    .subtitle { margin: 0; color: #666; font-size: 13px; }
+
+    .grid-layout {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px; /* Reduced gap */
+        justify-content: center;
     }
-    .x-sub-labels text {
-        fill: #555;
+
+    .card {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-bottom: 8px;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+    }
+
+    .card-header {
+        width: 100%;
+        text-align: center;
+        padding: 8px 0;
+        background: #fafafa;
+        border-bottom: 1px solid #eee;
+        border-radius: 6px 6px 0 0;
+        margin-bottom: 4px;
+    }
+
+    .card-header strong { display: block; font-size: 14px; color: #222; margin-bottom: 1px;}
+    .period { font-size: 11px; color: #777; font-style: italic; }
+    .currency { font-size: 10px; color: #555; margin-top: 2px; font-weight: 500;}
+
+    .legend {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
+    }
+
+    .legend .item {
+        display: flex;
+        align-items: center;
+        font-size: 11px;
+        color: #444;
+    }
+
+    .legend .box {
+        width: 10px;
+        height: 10px;
+        margin-right: 6px;
+        border-radius: 2px;
+    }
+
+    .source-label {
         font-size: 10px;
-        text-anchor: middle;
+        color: #999;
+        text-align: right;
+        margin-top: 10px;
+        width: 100%;
+        font-style: italic;
     }
 </style>
