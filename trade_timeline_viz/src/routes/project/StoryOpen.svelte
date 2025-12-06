@@ -4,14 +4,15 @@
   import { base } from "$app/paths";
 
   let progress: number = $state(0);
-  // Use SvelteKit's base path for static assets
-  const imagePath = `${base}/Story_open.jpg`;
+  // Use SvelteKit's assets path for static files
+  // Static files are served from root, so combine base with filename
+  const imagePath = base ? `${base}/Story_open.jpg` : '/Story_open.jpg';
 </script>
 
 <div class="story-open-wrapper">
   <Scroll bind:progress --scrolly-story-width="0">
     <div id="virtual"></div>
-    <div slot="viz" class="header" style="--bg-image: url('{imagePath}')">
+    <div slot="viz" class="header" style="background-image: url('{imagePath}')">
     <div class="content-overlay">
       <h1>The Trade War Timeline</h1>
 
@@ -51,7 +52,6 @@
   }
 
   .header {
-    background-image: var(--bg-image);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
