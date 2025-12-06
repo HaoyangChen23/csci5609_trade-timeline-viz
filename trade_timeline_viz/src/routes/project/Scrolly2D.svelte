@@ -505,48 +505,6 @@
     </div>
 </Scroll>
 
-<!-- Manufacturing PMI Section -->
-<div class="section-divider"></div>
-<div class="scroll-prompt">
-    <div class="scroll-prompt-content">
-        <span class="scroll-arrow">↓</span>
-        <span class="scroll-prompt-text">Continue scrolling for manufacturing insights</span>
-    </div>
-</div>
-<h2>Manufacturing PMI Trends (2024-2025)</h2>
-<p>
-    The ISM Manufacturing Purchasing Managers' Index (PMI) indicates the health of the manufacturing sector.
-    A reading above 50 signals expansion, while below 50 indicates contraction.
-</p>
-
-<Scroll bind:progress={pmiScrollProgress} id="pmi">
-    <div class="info-section">
-        <h3>Key Insight</h3>
-        <p>
-            Tariff policy is negatively impacting U.S. manufacturing, which contracted for a fifth straight month in
-            July as the <strong>ISM PMI fell to 48.0</strong>. The tariffs are raising input costs, with the Prices Paid
-            index remaining
-            high at 64.8. This is dampening demand, as the New Orders sub-index is also in contraction (47.1). Most
-            notably, the policy is hurting employment; the manufacturing employment index dropped to 43.4, its lowest
-            point since July 2020, with the ISM citing "acceleration of headcount reductions" due to tariff-related
-            uncertainty.
-        </p>
-    </div>
-
-    <div slot="viz" class="chart-container">
-        <ManufacturingPMIChart data={timelineData} currentDate={pmiFinalDate} height={chartHeight}
-                               width={chartWidth}/>
-        <TimeSlider 
-            data={timelineData} 
-            currentDate={pmiFinalDate} 
-            onDateChange={(date) => pmiSliderDate = date}
-            width={chartWidth - 60}
-        />
-        <p class="data-source">Source: ISM</p>
-
-    </div>
-</Scroll>
-
 <!-- Trade Balance Section -->
 <div class="section-divider"></div>
 <div class="scroll-prompt">
