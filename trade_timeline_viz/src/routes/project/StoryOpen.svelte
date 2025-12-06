@@ -59,7 +59,7 @@
   }
 
   .header {
-    background-image: var(--bg-image-url);
+    /* Background image set via JavaScript in onMount */
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
