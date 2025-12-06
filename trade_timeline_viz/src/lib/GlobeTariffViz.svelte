@@ -283,9 +283,9 @@
       });
     }
 
-    // Re-create bars when toggle changes
+    // Re-create bars when toggle changes or data changes
     $effect(() => {
-      if (showCurrent !== undefined) {
+      if (showCurrent !== undefined && data.length > 0) {
         updateBars();
       }
     });
