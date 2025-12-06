@@ -807,6 +807,37 @@
         margin-bottom: var(--spacing-lg);
     }
 
+    .references-section {
+        background: linear-gradient(180deg, #ffffff 0%, var(--color-gray-50) 100%);
+        max-width: 100%;
+        padding: var(--spacing-3xl) var(--spacing-xl);
+        margin-top: var(--spacing-2xl);
+        border-top: 2px solid var(--color-gray-200);
+    }
+
+    .references-section h2 {
+        max-width: var(--content-max-width);
+        margin-left: auto;
+        margin-right: auto;
+        text-align: center;
+        color: var(--color-gray-900);
+        margin-bottom: var(--spacing-xl);
+        font-size: var(--font-size-3xl);
+    }
+
+    .references-list {
+        max-width: var(--content-max-width);
+        margin-left: auto;
+        margin-right: auto;
+        text-align: left;
+    }
+
+    .references-list p {
+        margin-bottom: var(--spacing-lg);
+        line-height: 1.8;
+        color: var(--color-gray-700);
+    }
+
     .acknowledgments-section {
         background: linear-gradient(180deg, #ffffff 0%, var(--color-gray-50) 100%);
         max-width: 100%;
