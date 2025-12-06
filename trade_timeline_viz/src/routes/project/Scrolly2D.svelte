@@ -666,6 +666,21 @@
     </p>
 </div>
 
+<div class="narrative-section references-section">
+    <h2>References</h2>
+    
+    <div class="references-list">
+        <p>The US-China Tariff Rate Trends data was compiled from the Peterson Institute for International Economics.</p>
+        <p>The Front-loading Effect at U.S. Ports data was from the Department of Transportation; Data available through August 2025.</p>
+        <p>The USA inflation rate and import price index data was from the Bureau of Labor Statistics (BLS) and Bureau of Economic Analysis (BEA).</p>
+        <p>The Manufacturing PMI Trends data was from ISM.</p>
+        <p>The U.S. Trade Balance Trends data was from the United States International Trade Commission.</p>
+        <p>The Auto sector income data was from Company Filings.</p>
+        <p>The Foreign Direct Investment & Supply Chain Reshoring data was from Reuters reports and company statements.</p>
+        <p>The Soybean Shift data was from the American Soybean Association and Trade Data Monitor.</p>
+    </div>
+</div>
+
 <div class="narrative-section acknowledgments-section">
     <h2>Acknowledgments</h2>
     
@@ -692,7 +707,7 @@
     </div>
     
     <div class="feedback-acknowledgments">
-        <p>Feedback from CSCI 5609, Spring 2025</p>
+        <p>Feedback from CSCI 5609, Fall 2025</p>
         <p>Feedback from Professor Chen</p>
         <p>Feedback from TA Pan Hao</p>
     </div>
