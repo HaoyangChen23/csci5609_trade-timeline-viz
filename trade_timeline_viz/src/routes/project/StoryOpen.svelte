@@ -1,15 +1,17 @@
 <script lang="ts">
   import { Scroll } from "$lib";
   import { fly } from "svelte/transition";
+  import { base } from "$app/paths";
 
   let progress: number = $state(0);
-  const basePath = import.meta.env.BASE_URL || '';
+  // Use SvelteKit's base path for static assets
+  const imagePath = `${base}/Story_open.jpg`;
 </script>
 
 <div class="story-open-wrapper">
   <Scroll bind:progress --scrolly-story-width="0">
     <div id="virtual"></div>
-    <div slot="viz" class="header" style="--bg-image: url('{basePath}Story_open.jpg')">
+    <div slot="viz" class="header" style="--bg-image: url('{imagePath}')">
     <div class="content-overlay">
       <h1>The Trade War Timeline</h1>
 
