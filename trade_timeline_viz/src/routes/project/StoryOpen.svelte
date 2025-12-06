@@ -5,19 +5,21 @@
   import { base } from "$app/paths";
 
   let progress: number = $state(0);
-  let imagePath = $state('/Story_open.jpg');
+  let headerElement: HTMLDivElement;
   
   onMount(() => {
-    // Set image path with base in browser environment
-    const basePath = base || '';
-    imagePath = basePath ? `${basePath}/Story_open.jpg` : '/Story_open.jpg';
+    // Set background image path in browser with correct base path
+    const imagePath = base ? `${base}/Story_open.jpg` : '/Story_open.jpg';
+    if (headerElement) {
+      headerElement.style.backgroundImage = `url('${imagePath}')`;
+    }
   });
 </script>
 
-<div class="story-open-wrapper" style="--bg-image-url: url('{imagePath}')">
+<div class="story-open-wrapper">
   <Scroll bind:progress --scrolly-story-width="0">
     <div id="virtual"></div>
-    <div slot="viz" class="header">
+    <div slot="viz" class="header" bind:this={headerElement}>
     <div class="content-overlay">
       <h1>The Trade War Timeline</h1>
 
