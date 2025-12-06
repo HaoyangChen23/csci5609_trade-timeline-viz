@@ -61,10 +61,10 @@
         outcome: "#007bff"          // Blue (Change/Result)
     };
 
-    // Reduced Dimensions for Compact View
-    const cardWidth = 165;  // Reduced from 200
-    const cardHeight = 230; // Reduced from 280
-    const margin = { top: 35, right: 10, bottom: 50, left: 40 }; // Tighter margins
+    // Dimensions for single-row layout (5 cards)
+    const cardWidth = 180;  // Slightly wider for better visibility
+    const cardHeight = 250; // Slightly taller
+    const margin = { top: 35, right: 10, bottom: 50, left: 40 };
 
     function wrapText(text: string) {
         return text.split(/\s+/);
@@ -192,11 +192,10 @@
 <style>
     .chart-container {
         font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        background: #fff;
-        padding: 15px; /* Reduced padding */
+        background: transparent;
+        padding: 0;
         border-radius: 8px;
         width: 100%;
-        max-width: 950px; /* Reduced max-width to keep it compact */
         margin: 0 auto;
     }
 
@@ -211,9 +210,11 @@
 
     .grid-layout {
         display: flex;
-        flex-wrap: wrap;
-        gap: 15px; /* Reduced gap */
+        flex-wrap: nowrap;
+        gap: 15px;
         justify-content: center;
+        width: 100%;
+        overflow-x: auto;
     }
 
     .card {

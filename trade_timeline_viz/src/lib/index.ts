@@ -48,3 +48,6 @@ export {SoybeanChart}
 
 import USInvestmentMap from './USInvestmentMap.svelte'
 export {USInvestmentMap}
+
+import TimeSlider from './TimeSlider.svelte'
+export {TimeSlider}

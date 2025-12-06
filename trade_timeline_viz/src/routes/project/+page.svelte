@@ -335,28 +335,29 @@
     }
 
     .globe-hero-section {
-        width: 80vw;
+        width: 100%;
         max-width: 100%;
         margin: 0 auto;
-        padding: 60px 10px;
+        padding: var(--spacing-3xl) var(--spacing-lg);
         box-sizing: border-box;
         text-align: center;
-        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+        background: linear-gradient(180deg, var(--color-gray-900) 0%, var(--color-gray-800) 100%);
     }
 
     .globe-hero-section h2 {
         color: #fff;
-        font-size: 32px;
-        font-weight: 700;
-        margin-bottom: 15px;
+        font-size: clamp(1.5rem, 4vw, 2rem);
+        font-weight: var(--font-weight-bold);
+        margin-bottom: var(--spacing-md);
+        letter-spacing: -0.02em;
     }
 
     .globe-hero-section p {
-        color: #b0b0c0;
-        font-size: 16px;
-        line-height: 1.6;
+        color: var(--color-gray-300);
+        font-size: var(--font-size-base);
+        line-height: 1.7;
         max-width: 700px;
-        margin: 0 auto 30px auto;
+        margin: 0 auto var(--spacing-xl) auto;
     }
 
     .globe-hero-wrapper {
@@ -373,10 +374,45 @@
     }
 
     .container {
-        width: 80vw;
-        max-width: 100%;
+        width: 100%;
+        max-width: var(--container-max-width);
         margin: 0 auto;
-        padding: 10px;
+        padding: var(--spacing-lg);
         box-sizing: border-box;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+        .timeline-charts-container {
+            grid-template-columns: 1fr;
+            gap: var(--spacing-xl);
+        }
+
+        .chart-container {
+            margin-left: 0;
+            padding: var(--spacing-md);
+        }
+
+        .narrative-section {
+            padding: var(--spacing-xl) var(--spacing-md);
+        }
+    }
+
+    @media (max-width: 768px) {
+        h2 {
+            font-size: var(--font-size-2xl);
+        }
+
+        .narrative-intro h1 {
+            font-size: var(--font-size-3xl);
+        }
+
+        .info-section {
+            padding: var(--spacing-md);
+        }
+
+        .chart-container {
+            padding: var(--spacing-sm);
+        }
     }
 </style>

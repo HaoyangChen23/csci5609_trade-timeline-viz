@@ -9,13 +9,17 @@
         importPrice: number;
     };
 
-    let { data, width = 900, height = 500 } = $props<{
+    let { data, width = 900, height = 500, currentDate = null } = $props<{
         data: InflationData[];
         width?: number;
         height?: number;
+        currentDate?: Date | null;
     }>();
 
-    const margin = { top: 40, right: 160, bottom: 60, left: 60 };
+    import { chartColors, chartTypography, chartSpacing, chartStyles } from './chartStyles';
+
+    const margin = chartSpacing.margin;
+    margin.right = 160; // Keep wider right margin for dual axis
 
     const usableArea = $derived({
         top: margin.top,
@@ -24,7 +28,14 @@
         left: margin.left
     });
 
+    // Filter visible data up to current date
+    const visibleData = $derived.by(() => {
+        if (!currentDate) return data;
+        return data.filter(d => d.date <= currentDate);
+    });
+
     // --- Scales ---
+    // Use full data range for consistent domain
     const dateExtent = $derived(d3.extent(data, (d) => d.date) as [Date, Date]);
 
     const xScale = $derived(
@@ -174,11 +185,11 @@
                 Target (2%)
             </text>
 
-            <path class="line-import" d={lineImport(data)} />
-            <path class="line-rate" d={lineRate(data)} />
-            <path class="line-pce" d={linePCE(data)} />
+            <path class="line-import" d={lineImport(visibleData)} />
+            <path class="line-rate" d={lineRate(visibleData)} />
+            <path class="line-pce" d={linePCE(visibleData)} />
 
-            {#each data as d}
+            {#each visibleData as d}
                 {#if !isNaN(d.importPrice)}
                     <circle
                             role="graphics-symbol"
@@ -288,24 +299,27 @@
         position: relative;
     }
     .chart-svg {
-        font-family: Arial, sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
         font-size: 12px;
     }
     .line-import {
         fill: none;
-        stroke: #28a745;
-        stroke-width: 2.5px;
+        stroke: #10b981;
+        stroke-width: 3px;
+        transition: d 150ms ease;
     }
     .line-rate {
         fill: none;
-        stroke: #007bff;
-        stroke-width: 2.5px;
+        stroke: #3b82f6;
+        stroke-width: 3px;
+        transition: d 150ms ease;
     }
     .line-pce {
         fill: none;
-        stroke: #fd7e14;
-        stroke-width: 2.5px;
-        stroke-dasharray: 4, 2;
+        stroke: #f97316;
+        stroke-width: 3px;
+        stroke-dasharray: 2, 4;
+        transition: d 150ms ease;
     }
     .target-line {
         stroke: #dc3545;
@@ -327,27 +341,27 @@
         color: #333;
     }
     .dot {
-        transition: r 0.2s, stroke-width 0.2s;
+        transition: r 0.2s ease, stroke-width 0.2s ease;
         cursor: pointer;
     }
     .dot:hover {
-        r: 6;
-        stroke-width: 2;
+        r: 7;
+        stroke-width: 2.5;
     }
 
     /* Tooltip Styles */
     .tooltip {
         position: fixed;
-        background: rgba(255, 255, 255, 0.95);
-        border: 1px solid #ccc;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        padding: 8px 12px;
-        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid #d1d5db;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        padding: 10px 12px;
+        border-radius: 8px;
         pointer-events: none;
         z-index: 1000;
-        font-family: Arial, sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
         font-size: 12px;
-        min-width: 120px;
+        min-width: 140px;
         transform: translate(0, -100%); /* Position above cursor */
     }
     .tooltip strong {

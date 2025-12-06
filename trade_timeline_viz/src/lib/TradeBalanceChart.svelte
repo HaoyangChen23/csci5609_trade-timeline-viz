@@ -17,15 +17,16 @@
 		left: margin.left
 	};
 
+
 	const xScale = $derived(
 		d3
 			.scaleBand()
-			.domain(data.map((d) => d.date))
+			.domain(data.map((d) => d.date)) // Use full data for consistent domain
 			.range([usableArea.left, usableArea.right])
 			.padding(0.2)
 	);
 
-	// Find min value for y-axis (most negative)
+	// Find min value for y-axis (most negative) - use full data for consistent domain
 	const yMin = $derived(d3.min(data, (d) => d.balance) || 0);
 	const yMax = $derived(0); // Max is 0 since all values are negative
 
@@ -95,30 +96,32 @@
 
 		<!-- Bars -->
 		{#each data as d}
-			{@const barX = xScale(d.date) || 0}
+			{@const barX = xScale(d.date)}
 			{@const barWidth = xScale.bandwidth()}
 			{@const barY = zeroLine}
 			{@const barHeight = yScale(d.balance) - zeroLine}
 
-			<rect
-				x={barX}
-				y={barY}
-				width={barWidth}
-				height={barHeight}
-				fill={colorScale(d.balance)}
-				class="trade-bar"
-			/>
+			{#if barX !== undefined}
+				<rect
+					x={barX}
+					y={barY}
+					width={barWidth}
+					height={barHeight}
+					fill={colorScale(d.balance)}
+					class="trade-bar"
+				/>
 
-			<!-- Value labels -->
-			<text
-				x={barX + barWidth / 2}
-				y={yScale(d.balance) + 15}
-				text-anchor="middle"
-				font-size="11"
-				fill="#333"
-			>
-				{d.balance.toFixed(0)}
-			</text>
+				<!-- Value labels -->
+				<text
+					x={barX + barWidth / 2}
+					y={yScale(d.balance) + 15}
+					text-anchor="middle"
+					font-size="11"
+					fill="#333"
+				>
+					{d.balance.toFixed(0)}
+				</text>
+			{/if}
 		{/each}
 
 		<!-- Axes -->
@@ -168,7 +171,7 @@
 		font-size: 12px;
 	}
 	.trade-bar {
-		transition: opacity 0.2s ease;
+		transition: opacity 0.2s ease, height 0.15s ease, y 0.15s ease;
 	}
 	.trade-bar:hover {
 		opacity: 0.8;

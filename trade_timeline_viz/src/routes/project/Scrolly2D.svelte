@@ -41,6 +41,7 @@
         USInvestmentMap,
         InflationChart,
         SoybeanChart,
+        TimeSlider,
     } from "$lib";
     import * as d3 from "d3";
 
@@ -55,7 +56,7 @@
     let soybeanScrollProgress = $state(0);
 
     // Timeline scroll state (independent from page scroll)
-    let timelineScrollContainer: HTMLElement;
+    let timelineScrollContainer: HTMLElement = $state();
     let currentIndex = $state(0); // Start at 0 to show first date
     let timelineItemElements = new Map<number, HTMLElement>(); // Store refs to timeline items
 
@@ -154,6 +155,112 @@
 
     const chartHeight = 500;
     const chartWidth = 900;
+    // Width for charts in the timeline section (right column is larger now)
+    const timelineChartWidth = 750;
+
+    // Function to convert scroll progress (0-100) to a date based on timeline data
+    function progressToDate(progress: number, data: TimelineData[]): Date | null {
+        if (data.length === 0) return null;
+        if (progress <= 0) return data[0].date;
+        if (progress >= 100) return data[data.length - 1].date;
+
+        // Calculate the index based on progress
+        const index = Math.floor((progress / 100) * (data.length - 1));
+        return data[index]?.date || null;
+    }
+
+    // Convert scroll progress to dates for each chart section
+    const tariffRatesCurrentDate = $derived(
+        progressToDate(tariffRatesScrollProgress, timelineData)
+    );
+
+    const portTEUCurrentDate = $derived(
+        progressToDate(portTEUScrollProgress, timelineData)
+    );
+
+    const pmiCurrentDate = $derived(
+        progressToDate(pmiScrollProgress, timelineData)
+    );
+
+    // Function to convert scroll progress to date for inflation data
+    function progressToDateInflation(progress: number, data: { date: Date }[]): Date | null {
+        if (data.length === 0) return null;
+        if (progress <= 0) return data[0].date;
+        if (progress >= 100) return data[data.length - 1].date;
+
+        const index = Math.floor((progress / 100) * (data.length - 1));
+        return data[index]?.date || null;
+    }
+
+    const inflationCurrentDate = $derived(
+        progressToDateInflation(inflationScrollProgress, inflationData)
+    );
+
+    // Function to convert scroll progress to date for trade balance data
+    function progressToDateTradeBalance(progress: number, data: TradeBalance[]): Date | null {
+        if (!data || data.length === 0) return null;
+        if (progress <= 0) return new Date(data[0].date);
+        if (progress >= 100) return new Date(data[data.length - 1].date);
+
+        const index = Math.floor((progress / 100) * (data.length - 1));
+        return new Date(data[index]?.date || data[0].date);
+    }
+
+    const tradeBalanceCurrentDate = $derived.by(() => {
+        if (!tradeBalanceData || tradeBalanceData.length === 0) return null;
+        return progressToDateTradeBalance(tradeBalanceScrollProgress, tradeBalanceData);
+    });
+
+    // Independent date states for slider control (override scroll-based dates)
+    let tariffRatesSliderDate: Date | null = $state(null);
+    let portTEUSliderDate: Date | null = $state(null);
+    let pmiSliderDate: Date | null = $state(null);
+    let inflationSliderDate: Date | null = $state(null);
+
+    // Track last scroll progress to detect significant changes
+    let lastTariffRatesProgress = $state(0);
+    let lastPortTEUProgress = $state(0);
+    let lastPmiProgress = $state(0);
+    let lastInflationProgress = $state(0);
+
+    // Reset slider date when scroll progress changes significantly (user is scrolling, not dragging slider)
+    $effect(() => {
+        const progressDiff = Math.abs(tariffRatesScrollProgress - lastTariffRatesProgress);
+        if (progressDiff > 5) { // If scroll changed by more than 5%, clear slider date
+            tariffRatesSliderDate = null;
+        }
+        lastTariffRatesProgress = tariffRatesScrollProgress;
+    });
+
+    $effect(() => {
+        const progressDiff = Math.abs(portTEUScrollProgress - lastPortTEUProgress);
+        if (progressDiff > 5) {
+            portTEUSliderDate = null;
+        }
+        lastPortTEUProgress = portTEUScrollProgress;
+    });
+
+    $effect(() => {
+        const progressDiff = Math.abs(pmiScrollProgress - lastPmiProgress);
+        if (progressDiff > 5) {
+            pmiSliderDate = null;
+        }
+        lastPmiProgress = pmiScrollProgress;
+    });
+
+    $effect(() => {
+        const progressDiff = Math.abs(inflationScrollProgress - lastInflationProgress);
+        if (progressDiff > 5) {
+            inflationSliderDate = null;
+        }
+        lastInflationProgress = inflationScrollProgress;
+    });
+
+    // Use slider date if set, otherwise use scroll-based date
+    const tariffRatesFinalDate = $derived(tariffRatesSliderDate || tariffRatesCurrentDate);
+    const portTEUFinalDate = $derived(portTEUSliderDate || portTEUCurrentDate);
+    const pmiFinalDate = $derived(pmiSliderDate || pmiCurrentDate);
+    const inflationFinalDate = $derived(inflationSliderDate || inflationCurrentDate);
 </script>
 
 
@@ -211,17 +318,17 @@
                 <div class="visualizations-stack">
                     <div class="chart-wrapper">
                         <TariffRatesChart data={filteredTimelineData} {currentDate} height={chartHeight}
-                                          width={chartWidth} onDateSelect={handleDateSelect}/>
+                                          width={timelineChartWidth} onDateSelect={handleDateSelect}/>
                     </div>
 
                     <div class="chart-wrapper">
-                        <PortTEUChart data={filteredTimelineData} {currentDate} height={chartHeight} width={chartWidth}
+                        <PortTEUChart data={filteredTimelineData} {currentDate} height={chartHeight} width={timelineChartWidth}
                                       onDateSelect={handleDateSelect}/>
                     </div>
 
                     <div class="chart-wrapper">
                         <ManufacturingPMIChart data={filteredTimelineData} {currentDate} height={chartHeight}
-                                               width={chartWidth} onDateSelect={handleDateSelect}/>
+                                               width={timelineChartWidth} onDateSelect={handleDateSelect}/>
                     </div>
                 </div>
             </div>
@@ -233,6 +340,12 @@
 
 <!-- Detailed Tariff Rates Section -->
 <div class="section-divider"></div>
+<div class="scroll-prompt">
+    <div class="scroll-prompt-content">
+        <span class="scroll-arrow">↓</span>
+        <span class="scroll-prompt-text">Scroll to explore detailed visualizations</span>
+    </div>
+</div>
 <h2>US-China Tariff Rate Trends (2024-2025)</h2>
 <p>
     Track the escalation of tariff rates between the United States and China, as well as their respective rates
@@ -251,14 +364,26 @@
     </div>
 
     <div slot="viz" class="chart-container">
-        <TariffRatesChart data={timelineData} currentDate={new Date('2025-12-31')} height={chartHeight}
+        <TariffRatesChart data={timelineData} currentDate={tariffRatesFinalDate} height={chartHeight}
                           width={chartWidth}/>
+        <TimeSlider 
+            data={timelineData} 
+            currentDate={tariffRatesFinalDate} 
+            onDateChange={(date) => tariffRatesSliderDate = date}
+            width={chartWidth - 60}
+        />
         <p class="data-source">Source: Peterson Institute for International Economics</p>
     </div>
 </Scroll>
 
 <!-- Detailed Port TEU Section -->
 <div class="section-divider"></div>
+<div class="scroll-prompt">
+    <div class="scroll-prompt-content">
+        <span class="scroll-arrow">↓</span>
+        <span class="scroll-prompt-text">Continue scrolling to see more insights</span>
+    </div>
+</div>
 <h2>Front-loading Effect at U.S. Ports (2024-2025)</h2>
 <p>
     Examine container throughput (measured in Twenty-foot Equivalent Units) at major US ports.
@@ -277,14 +402,25 @@
     </div>
 
     <div slot="viz" class="chart-container">
-        <PortTEUChart data={timelineData} currentDate={new Date('2025-12-31')} height={chartHeight} width={chartWidth}/>
+        <PortTEUChart data={timelineData} currentDate={portTEUFinalDate} height={chartHeight} width={chartWidth}/>
+        <TimeSlider 
+            data={timelineData} 
+            currentDate={portTEUFinalDate} 
+            onDateChange={(date) => portTEUSliderDate = date}
+            width={chartWidth - 60}
+        />
         <p class="data-source">Source: Department of Transportation; Data available through August 2025</p>
     </div>
 </Scroll>
 
 
 <div class="section-divider"></div>
-
+<div class="scroll-prompt">
+    <div class="scroll-prompt-content">
+        <span class="scroll-arrow">↓</span>
+        <span class="scroll-prompt-text">Keep scrolling to discover more trends</span>
+    </div>
+</div>
 <h2>USA inflation rate and import price index (2024-2025)</h2>
 <p>
     Before the inauguration day of the 47th president, the inflation spike was expected to happen around late summer.
@@ -313,7 +449,13 @@
 
     <div slot="viz" class="chart-container">
         {#if inflationData && inflationData.length > 0}
-            <InflationChart data={inflationData} width={chartWidth} height={chartHeight}/>
+            <InflationChart data={inflationData} currentDate={inflationFinalDate} width={chartWidth} height={chartHeight}/>
+            <TimeSlider 
+                data={inflationData} 
+                currentDate={inflationFinalDate} 
+                onDateChange={(date) => inflationSliderDate = date}
+                width={chartWidth - 60}
+            />
             <p class="data-source">Source: Bureau of Labor Statistics (BLS), Bureau of Economic Analysis (BEA)</p>
         {:else}
             <div class="loading">Loading inflation data...</div>
@@ -323,6 +465,12 @@
 
 <!-- Detailed Manufacturing PMI Section -->
 <div class="section-divider"></div>
+<div class="scroll-prompt">
+    <div class="scroll-prompt-content">
+        <span class="scroll-arrow">↓</span>
+        <span class="scroll-prompt-text">Continue scrolling for manufacturing insights</span>
+    </div>
+</div>
 <h2>Manufacturing PMI Trends (2024-2025)</h2>
 <p>
     The ISM Manufacturing Purchasing Managers' Index (PMI) indicates the health of the manufacturing sector.
@@ -344,8 +492,56 @@
     </div>
 
     <div slot="viz" class="chart-container">
-        <ManufacturingPMIChart data={timelineData} currentDate={new Date('2025-12-31')} height={chartHeight}
+        <ManufacturingPMIChart data={timelineData} currentDate={pmiFinalDate} height={chartHeight}
                                width={chartWidth}/>
+        <TimeSlider 
+            data={timelineData} 
+            currentDate={pmiFinalDate} 
+            onDateChange={(date) => pmiSliderDate = date}
+            width={chartWidth - 60}
+        />
+        <p class="data-source">Source: ISM</p>
+
+    </div>
+</Scroll>
+
+<!-- Manufacturing PMI Section -->
+<div class="section-divider"></div>
+<div class="scroll-prompt">
+    <div class="scroll-prompt-content">
+        <span class="scroll-arrow">↓</span>
+        <span class="scroll-prompt-text">Continue scrolling for manufacturing insights</span>
+    </div>
+</div>
+<h2>Manufacturing PMI Trends (2024-2025)</h2>
+<p>
+    The ISM Manufacturing Purchasing Managers' Index (PMI) indicates the health of the manufacturing sector.
+    A reading above 50 signals expansion, while below 50 indicates contraction.
+</p>
+
+<Scroll bind:progress={pmiScrollProgress} id="pmi">
+    <div class="info-section">
+        <h3>Key Insight</h3>
+        <p>
+            Tariff policy is negatively impacting U.S. manufacturing, which contracted for a fifth straight month in
+            July as the <strong>ISM PMI fell to 48.0</strong>. The tariffs are raising input costs, with the Prices Paid
+            index remaining
+            high at 64.8. This is dampening demand, as the New Orders sub-index is also in contraction (47.1). Most
+            notably, the policy is hurting employment; the manufacturing employment index dropped to 43.4, its lowest
+            point since July 2020, with the ISM citing "acceleration of headcount reductions" due to tariff-related
+            uncertainty.
+        </p>
+    </div>
+
+    <div slot="viz" class="chart-container">
+        <ManufacturingPMIChart data={timelineData} currentDate={pmiFinalDate} height={chartHeight}
+                               width={chartWidth}/>
+        <TimeSlider 
+            data={timelineData} 
+            currentDate={pmiFinalDate} 
+            onDateChange={(date) => pmiSliderDate = date}
+            width={chartWidth - 60}
+        />
         <p class="data-source">Source: ISM</p>
 
     </div>
@@ -353,6 +549,12 @@
 
 <!-- Trade Balance Section -->
 <div class="section-divider"></div>
+<div class="scroll-prompt">
+    <div class="scroll-prompt-content">
+        <span class="scroll-arrow">↓</span>
+        <span class="scroll-prompt-text">Scroll down for more analysis</span>
+    </div>
+</div>
 <h2>U.S. Trade Balance Trends (2024-2025)</h2>
 <p>
     The trade balance shows the difference between exports and imports, measured in hundreds of millions of dollars.
@@ -377,7 +579,12 @@
 
 <!--Auto Income Section -->
 <div class="section-divider"></div>
-
+<div class="scroll-prompt">
+    <div class="scroll-prompt-content">
+        <span class="scroll-arrow">↓</span>
+        <span class="scroll-prompt-text">Explore sector-specific impacts</span>
+    </div>
+</div>
 <h2>Auto sector hit hard</h2>
 <p>
     The variance analysis below illustrates the protective role of financial hedging. For Hyundai and Kia,
@@ -404,13 +611,18 @@
         </p>
     </div>
 
-    <div slot="viz" class="chart-container">
+    <div slot="viz" class="auto-income-chart-container">
         <AutoIncomeBarChart height={chartHeight} width={chartWidth}/>
     </div>
 </Scroll>
 
 <div class="section-divider"></div>
-
+<div class="scroll-prompt">
+    <div class="scroll-prompt-content">
+        <span class="scroll-arrow">↓</span>
+        <span class="scroll-prompt-text">Discover global supply chain shifts</span>
+    </div>
+</div>
 <h2>Reshaping Global Supply Chains: The Soybean Shift</h2>
 <p>
     Originated in China, soybeans are a critical resource for livestock feed and cooking oil, with China now
@@ -496,6 +708,40 @@
     </p>
 </div>
 
+<div class="narrative-section acknowledgments-section">
+    <h2>Acknowledgments</h2>
+    
+    <div class="contribution-list">
+        <p>
+            <strong>Dunzhi Chou (Research Lead, Data Lead):</strong> Deep-dive data collection (USITC, BEA, Company Filings, ISM, BLS), data cleaning and processing, ensuring data accuracy for all visualizations, narrative structure design.
+        </p>
+        
+        <p>
+            <strong>Jinzhe Wang (Visualization Lead):</strong> US-China Tariff Rate Trends chart, Front-loading Effect at U.S. Ports chart, scroll-based animation implementation, time slider component design, chart styling system.
+        </p>
+        
+        <p>
+            <strong>Haoyang Chen (Visualization Developer):</strong> USA inflation rate and import price index chart, Manufacturing PMI Trends chart, U.S. Trade Balance Trends chart, scroll interaction design, chart optimization.
+        </p>
+        
+        <p>
+            <strong>Mingxi Su (Interactive Timeline Lead):</strong> Interactive Trade Timeline & Visualizations implementation, timeline component development, synchronized chart interactions, scroll-based narrative design.
+        </p>
+        
+        <p>
+            <strong>Pengju Liu (Quality Assurance, Data Support):</strong> Data validation, quality assurance, testing support, documentation assistance.
+        </p>
+    </div>
+    
+    <div class="feedback-acknowledgments">
+        <p>Feedback from CSCI 5609, Spring 2025</p>
+        <p>Feedback from Professor Chen</p>
+        <p>Feedback from TA Pan Hao</p>
+    </div>
+    
+    <p class="thank-you">Thank you.</p>
+</div>
+
 <!-- Global Tariff Map Section - MOVED TO TOP OF PAGE (see +page.svelte) -->
 <!--
 <div class="section-divider"></div>
@@ -525,65 +771,129 @@
 
 <style>
     h2 {
-        margin-top: 40px;
-        margin-bottom: 15px;
-        color: #2c3e50;
-        font-size: 28px;
-        font-weight: 700;
+        margin-top: 3rem;
+        margin-bottom: 1rem;
+        color: var(--color-gray-900);
+        font-size: var(--font-size-3xl);
+        font-weight: var(--font-weight-bold);
+        letter-spacing: -0.02em;
     }
 
     /* --- NARRATIVE TEXT STYLES --- */
     .narrative-section {
-        max-width: 800px;
+        max-width: var(--content-max-width);
         margin: 0 auto;
-        padding: 60px 20px;
+        padding: var(--spacing-3xl) var(--spacing-xl);
         line-height: 1.8;
-        font-size: 18px;
-        color: #333;
+        font-size: var(--font-size-lg);
+        color: var(--color-gray-800);
     }
 
     /* Introduction Specifics */
     .narrative-intro h1 {
-        font-size: 42px;
-        font-weight: 800;
-        margin-bottom: 30px;
-        color: #1a1a2e;
+        font-size: clamp(2rem, 5vw, 3rem);
+        font-weight: var(--font-weight-extrabold);
+        margin-bottom: var(--spacing-xl);
+        color: var(--color-gray-900);
         line-height: 1.2;
-        letter-spacing: -0.5px;
+        letter-spacing: -0.03em;
     }
 
     .narrative-intro .lead {
-        font-size: 22px;
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 20px;
-        border-left: 4px solid #e35424; /* Orange accent line */
-        padding-left: 20px;
+        font-size: var(--font-size-xl);
+        font-weight: var(--font-weight-semibold);
+        color: var(--color-gray-700);
+        margin-bottom: var(--spacing-lg);
+        border-left: 4px solid var(--color-accent);
+        padding-left: var(--spacing-lg);
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, transparent 100%);
+        padding: var(--spacing-md) var(--spacing-lg);
+        border-radius: var(--radius-md);
     }
 
     /* Summary Specifics */
     .narrative-summary {
-        background-color: #f8f9fa; /* Light grey background to distinguish it */
-        max-width: 100%; /* Full width background */
-        padding: 80px 20px;
-        margin-top: 60px;
-        border-top: 1px solid #e0e0e0;
+        background: linear-gradient(180deg, var(--color-gray-50) 0%, #ffffff 100%);
+        max-width: 100%;
+        padding: var(--spacing-3xl) var(--spacing-xl);
+        margin-top: var(--spacing-3xl);
+        border-top: 2px solid var(--color-gray-200);
     }
 
     /* Constrain the text inside the full-width summary */
     .narrative-summary h2,
     .narrative-summary p {
-        max-width: 800px;
+        max-width: var(--content-max-width);
         margin-left: auto;
         margin-right: auto;
     }
 
     .narrative-summary h2 {
-        font-size: 32px;
-        color: #1a1a2e;
-        margin-bottom: 25px;
+        font-size: var(--font-size-3xl);
+        color: var(--color-gray-900);
+        margin-bottom: var(--spacing-lg);
     }
 
+    .acknowledgments-section {
+        background: linear-gradient(180deg, #ffffff 0%, var(--color-gray-50) 100%);
+        max-width: 100%;
+        padding: var(--spacing-3xl) var(--spacing-xl);
+        margin-top: var(--spacing-2xl);
+        border-top: 2px solid var(--color-gray-200);
+    }
+
+    .acknowledgments-section h2 {
+        max-width: var(--content-max-width);
+        margin-left: auto;
+        margin-right: auto;
+        text-align: center;
+        color: var(--color-gray-900);
+        margin-bottom: var(--spacing-xl);
+        font-size: var(--font-size-3xl);
+    }
+
+    .contribution-list {
+        max-width: var(--content-max-width);
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .contribution-list p {
+        margin-bottom: var(--spacing-lg);
+        line-height: 1.8;
+    }
+
+    .contribution-list strong {
+        color: var(--color-gray-900);
+        font-weight: var(--font-weight-bold);
+    }
+
+    .feedback-acknowledgments {
+        max-width: var(--content-max-width);
+        margin-left: auto;
+        margin-right: auto;
+        margin-top: var(--spacing-2xl);
+        padding-top: var(--spacing-xl);
+        border-top: 1px solid var(--color-gray-200);
+        text-align: center;
+    }
+
+    .feedback-acknowledgments p {
+        margin-bottom: var(--spacing-sm);
+        color: var(--color-gray-600);
+        font-size: var(--font-size-sm);
+    }
+
+    .thank-you {
+        max-width: var(--content-max-width);
+        margin-left: auto;
+        margin-right: auto;
+        text-align: center;
+        margin-top: var(--spacing-xl);
+        font-size: var(--font-size-lg);
+        color: var(--color-gray-700);
+        font-weight: var(--font-weight-medium);
+    }
 
     .timeline-title {
         margin-top: 80px; /* Extra space to prevent overlapping with progress indicators */
@@ -594,19 +904,26 @@
     }
 
     p {
-        color: #555;
-        line-height: 1.6;
-        margin-bottom: 30px;
-        font-size: 16px;
+        color: var(--color-gray-700);
+        line-height: 1.7;
+        margin-bottom: var(--spacing-xl);
+        font-size: var(--font-size-base);
     }
 
     /* Timeline & Charts Container */
     .timeline-charts-container {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 40px;
-        margin: 40px 0;
+        grid-template-columns: 0.8fr 1.2fr;
+        gap: var(--spacing-2xl);
+        margin: var(--spacing-2xl) 0;
         min-height: 80vh;
+        padding: var(--spacing-lg);
+        max-width: 1400px;
+        margin-left: auto;
+        margin-right: auto;
+        background: linear-gradient(135deg, var(--color-gray-50) 0%, #ffffff 100%);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-md);
     }
 
     .timeline-column,
@@ -618,15 +935,15 @@
     .scroll-indicator {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 10px 15px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
         color: white;
-        border-radius: 8px;
-        margin-bottom: 15px;
-        font-size: 14px;
-        font-weight: 500;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--spacing-md);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-medium);
+        box-shadow: var(--shadow-md);
         animation: pulse-glow 2s ease-in-out infinite;
     }
 
@@ -708,10 +1025,9 @@
         height: 80vh;
         overflow-y: auto;
         overflow-x: hidden;
-        padding-right: 20px;
-        /* Custom scrollbar styling */
+        padding-right: var(--spacing-lg);
         scrollbar-width: thin;
-        scrollbar-color: #667eea #f1f1f1;
+        scrollbar-color: var(--color-primary) var(--color-gray-100);
     }
 
     .timeline-scroll-container::-webkit-scrollbar {
@@ -719,27 +1035,27 @@
     }
 
     .timeline-scroll-container::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
+        background: var(--color-gray-100);
+        border-radius: var(--radius-sm);
     }
 
     .timeline-scroll-container::-webkit-scrollbar-thumb {
-        background: #667eea;
-        border-radius: 4px;
+        background: var(--color-primary);
+        border-radius: var(--radius-sm);
+        transition: background var(--transition-fast);
     }
 
     .timeline-scroll-container::-webkit-scrollbar-thumb:hover {
-        background: #5568d3;
+        background: var(--color-primary-dark);
     }
 
     .charts-scroll-container {
         height: 80vh;
         overflow-y: auto;
         overflow-x: hidden;
-        padding-left: 20px;
-        /* Custom scrollbar styling */
+        padding-left: var(--spacing-lg);
         scrollbar-width: thin;
-        scrollbar-color: #4a90e2 #f1f1f1;
+        scrollbar-color: var(--color-secondary) var(--color-gray-100);
     }
 
     .charts-scroll-container::-webkit-scrollbar {
@@ -747,61 +1063,170 @@
     }
 
     .charts-scroll-container::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 4px;
+        background: var(--color-gray-100);
+        border-radius: var(--radius-sm);
     }
 
     .charts-scroll-container::-webkit-scrollbar-thumb {
-        background: #4a90e2;
-        border-radius: 4px;
+        background: var(--color-secondary);
+        border-radius: var(--radius-sm);
+        transition: background var(--transition-fast);
     }
 
     .charts-scroll-container::-webkit-scrollbar-thumb:hover {
-        background: #3a7bc8;
+        background: var(--color-primary-dark);
     }
 
     .visualizations-stack {
         display: flex;
         flex-direction: column;
-        gap: 60px;
+        gap: var(--spacing-3xl);
         width: 100%;
     }
 
     .chart-wrapper {
         width: 100%;
-        max-width: 900px;
+        max-width: var(--content-max-width);
+        background: white;
+        padding: var(--spacing-lg);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        transition: box-shadow var(--transition-base);
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+
+    .chart-wrapper :global(svg) {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .chart-wrapper:hover {
+        box-shadow: var(--shadow-md);
     }
 
     .section-divider {
-        height: 60px;
-        border-bottom: 2px solid #e0e0e0;
-        margin: 40px 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent 0%, var(--color-gray-300) 50%, transparent 100%);
+        margin: var(--spacing-3xl) 0;
+        border: none;
     }
 
     .info-section {
-        background-color: #f0f8ff;
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        border-left: 4px solid #4169E1;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%);
+        padding: var(--spacing-xl);
+        border-radius: var(--radius-lg);
+        margin-bottom: var(--spacing-lg);
+        border-left: 4px solid var(--color-primary);
+        box-shadow: var(--shadow-sm);
+        transition: all var(--transition-base);
+    }
+
+    .info-section:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
     }
 
     .info-section h3 {
         margin-top: 0;
-        color: #333;
-        font-size: 1.3em;
+        margin-bottom: var(--spacing-md);
+        color: var(--color-gray-900);
+        font-size: var(--font-size-xl);
+        font-weight: var(--font-weight-semibold);
     }
 
     .info-section p {
-        color: #555;
-        line-height: 1.6;
+        color: var(--color-gray-700);
+        line-height: 1.7;
         margin-bottom: 0;
     }
 
     .chart-container {
         width: 100%;
-        max-width: 900px;
-        margin-left: 40px;
+        max-width: var(--content-max-width);
+        margin: 0 auto;
+        padding: var(--spacing-lg);
+        background: var(--color-gray-50);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow-x: visible;
+    }
+
+    .chart-container :global(.time-slider-container) {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .auto-income-chart-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: var(--spacing-lg);
+        background: var(--color-gray-50);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .scroll-prompt {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: var(--spacing-xl) 0;
+        padding: var(--spacing-lg) 0;
+        opacity: 0.8;
+        animation: fade-in-out 3s ease-in-out infinite;
+    }
+
+    .scroll-prompt-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-md) var(--spacing-xl);
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(37, 99, 235, 0.2);
+    }
+
+    .scroll-arrow {
+        font-size: 32px;
+        color: var(--color-primary);
+        font-weight: bold;
+        animation: bounce-down 1.5s ease-in-out infinite;
+        line-height: 1;
+    }
+
+    .scroll-prompt-text {
+        font-size: var(--font-size-sm);
+        color: var(--color-gray-600);
+        font-weight: var(--font-weight-medium);
+        text-align: center;
+    }
+
+    @keyframes bounce-down {
+        0%, 100% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        50% {
+            transform: translateY(8px);
+            opacity: 0.7;
+        }
+    }
+
+    @keyframes fade-in-out {
+        0%, 100% {
+            opacity: 0.6;
+        }
+        50% {
+            opacity: 1;
+        }
+    }
+
+    .chart-container .data-source {
+        margin-top: var(--spacing-md);
+        padding-top: var(--spacing-sm);
+        border-top: 1px solid var(--color-gray-200);
     }
 
     .globe-section {
@@ -819,17 +1244,62 @@
 
     .loading {
         text-align: center;
-        padding: 60px;
-        font-size: 18px;
-        color: #666;
+        padding: var(--spacing-3xl);
+        font-size: var(--font-size-lg);
+        color: var(--color-gray-600);
+        font-weight: var(--font-weight-medium);
     }
 
     .data-source {
-        font-size: 11px;
+        font-size: var(--font-size-xs);
         text-align: right;
-        color: #999;
-        margin-top: 10px;
+        color: var(--color-gray-500);
+        margin-top: var(--spacing-md);
         width: 100%;
+        font-style: italic;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+        .timeline-charts-container {
+            grid-template-columns: 1fr;
+            gap: var(--spacing-xl);
+        }
+
+        .chart-container {
+            margin-left: 0;
+            padding: var(--spacing-md);
+        }
+
+        .narrative-section {
+            padding: var(--spacing-xl) var(--spacing-md);
+        }
+
+        h2 {
+            font-size: var(--font-size-2xl);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .narrative-intro h1 {
+            font-size: var(--font-size-2xl);
+        }
+
+        .narrative-intro .lead {
+            font-size: var(--font-size-lg);
+        }
+
+        .info-section {
+            padding: var(--spacing-md);
+        }
+
+        .chart-container {
+            padding: var(--spacing-sm);
+        }
+
+        .timeline-charts-container {
+            padding: var(--spacing-md);
+        }
     }
 
 </style>

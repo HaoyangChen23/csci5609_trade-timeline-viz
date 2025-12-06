@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as d3 from 'd3';
 	import type { TimelineData } from '../types';
+	import { chartColors, chartTypography, chartSpacing, chartStyles } from './chartStyles';
 
 	type Props = {
 		data: TimelineData[];
@@ -28,8 +29,8 @@
 	};
 	let tooltipData: TooltipData | null = $state(null);
 
-	// Margins
-	const margin = { top: 40, right: 120, bottom: 60, left: 80 };
+	// Margins - using professional spacing
+	const margin = chartSpacing.margin;
 	const usableArea = $derived({
 		top: margin.top,
 		right: width - margin.right,
@@ -95,15 +96,39 @@
 			.y((d) => yScale(d.us_tariffs_row))
 	);
 
-	// Update axes when scales change
+	// Update axes when scales change - with professional styling
 	$effect(() => {
 		if (xAxis) {
-			d3.select(xAxis).call(
-				d3.axisBottom(xScale).tickFormat((d) => d3.timeFormat('%b %Y')(d as Date))
-			);
+			const axis = d3.axisBottom(xScale)
+				.tickFormat((d) => d3.timeFormat('%b %Y')(d as Date))
+				.tickSize(chartStyles.axis.tickSize);
+			d3.select(xAxis)
+				.call(axis)
+				.selectAll('text')
+				.style('font-size', chartStyles.axis.tickFontSize)
+				.style('fill', chartStyles.axis.tickColor)
+				.style('font-family', chartTypography.fontFamily);
+			d3.select(xAxis).select('.domain')
+				.style('stroke', chartStyles.axis.strokeColor)
+				.style('stroke-width', chartStyles.axis.strokeWidth);
+			d3.select(xAxis).selectAll('.tick line')
+				.style('stroke', chartStyles.axis.tickLineColor);
 		}
 		if (yAxis) {
-			d3.select(yAxis).call(d3.axisLeft(yScale).tickFormat((d) => `${d}%`));
+			const axis = d3.axisLeft(yScale)
+				.tickFormat((d) => `${d}%`)
+				.tickSize(chartStyles.axis.tickSize);
+			d3.select(yAxis)
+				.call(axis)
+				.selectAll('text')
+				.style('font-size', chartStyles.axis.tickFontSize)
+				.style('fill', chartStyles.axis.tickColor)
+				.style('font-family', chartTypography.fontFamily);
+			d3.select(yAxis).select('.domain')
+				.style('stroke', chartStyles.axis.strokeColor)
+				.style('stroke-width', chartStyles.axis.strokeWidth);
+			d3.select(yAxis).selectAll('.tick line')
+				.style('stroke', chartStyles.axis.tickLineColor);
 		}
 	});
 
@@ -113,62 +138,57 @@
 
 		const svg = d3.select(svgElement);
 
-		// Create a single shared transition for all elements
-		const t = svg.transition().duration(100).ease(d3.easeLinear);
+		// Create a single shared transition for all elements - smooth professional transition
+		const t = svg.transition().duration(chartStyles.line.transition.duration).ease(d3.easeLinear);
 
 		// Update all lines with shared transition
-		svg.select('.line-chinese-row').transition(t).attr('d', lineChineseTariffsRow(visibleData) || '');
-		svg.select('.line-chinese-us').transition(t).attr('d', lineChineseTariffsUS(visibleData) || '');
-		svg.select('.line-us-chinese').transition(t).attr('d', lineUSTariffsChinese(visibleData) || '');
-		svg.select('.line-us-row').transition(t).attr('d', lineUSTariffsRow(visibleData) || '');
+		svg.select('.line-chinese-row').transition(t as any).attr('d', lineChineseTariffsRow(visibleData) || '');
+		svg.select('.line-chinese-us').transition(t as any).attr('d', lineChineseTariffsUS(visibleData) || '');
+		svg.select('.line-us-chinese').transition(t as any).attr('d', lineUSTariffsChinese(visibleData) || '');
+		svg.select('.line-us-row').transition(t as any).attr('d', lineUSTariffsRow(visibleData) || '');
 
 		// Update endpoint circles and labels with same shared transition
 		if (lastDataPoint) {
 			// Chinese → US endpoint
-			svg.select('.endpoint-chinese-us').transition(t)
+			svg.select('.endpoint-chinese-us').transition(t as any)
 				.attr('cx', xScale(lastDataPoint.date))
 				.attr('cy', yScale(lastDataPoint.chinese_tariffs_us));
-			svg.select('.label-chinese-us').transition(t)
+			svg.select('.label-chinese-us').transition(t as any)
 				.attr('x', xScale(lastDataPoint.date) + 10)
 				.attr('y', yScale(lastDataPoint.chinese_tariffs_us) + 4)
 				.text(`${lastDataPoint.chinese_tariffs_us.toFixed(1)}%`);
 
 			// US → Chinese endpoint
-			svg.select('.endpoint-us-chinese').transition(t)
+			svg.select('.endpoint-us-chinese').transition(t as any)
 				.attr('cx', xScale(lastDataPoint.date))
 				.attr('cy', yScale(lastDataPoint.us_tariffs_chinese));
-			svg.select('.label-us-chinese').transition(t)
+			svg.select('.label-us-chinese').transition(t as any)
 				.attr('x', xScale(lastDataPoint.date) + 10)
 				.attr('y', yScale(lastDataPoint.us_tariffs_chinese) + 4)
 				.text(`${lastDataPoint.us_tariffs_chinese.toFixed(1)}%`);
 
 			// Chinese → ROW endpoint
-			svg.select('.endpoint-chinese-row').transition(t)
+			svg.select('.endpoint-chinese-row').transition(t as any)
 				.attr('cx', xScale(lastDataPoint.date))
 				.attr('cy', yScale(lastDataPoint.chinese_tariffs_row));
-			svg.select('.label-chinese-row').transition(t)
+			svg.select('.label-chinese-row').transition(t as any)
 				.attr('x', xScale(lastDataPoint.date) + 10)
 				.attr('y', yScale(lastDataPoint.chinese_tariffs_row) + 4)
 				.text(`${lastDataPoint.chinese_tariffs_row.toFixed(1)}%`);
 
 			// US → ROW endpoint
-			svg.select('.endpoint-us-row').transition(t)
+			svg.select('.endpoint-us-row').transition(t as any)
 				.attr('cx', xScale(lastDataPoint.date))
 				.attr('cy', yScale(lastDataPoint.us_tariffs_row));
-			svg.select('.label-us-row').transition(t)
+			svg.select('.label-us-row').transition(t as any)
 				.attr('x', xScale(lastDataPoint.date) + 10)
 				.attr('y', yScale(lastDataPoint.us_tariffs_row) + 4)
 				.text(`${lastDataPoint.us_tariffs_row.toFixed(1)}%`);
 		}
 	});
 
-	// Line colors (brighter for better visibility)
-	const colors = {
-		chinese_us: '#e63946',    // Bright red - Chinese tariffs on US
-		us_chinese: '#2563eb',    // Bright blue - US tariffs on Chinese
-		chinese_row: '#e63946',   // Bright red dotted - Chinese tariffs on ROW
-		us_row: '#2563eb'         // Bright blue dotted - US tariffs on ROW
-	};
+	// Line colors - using professional palette
+	const colors = chartColors.palettes.tariff;
 
 	// Get the last visible data point for endpoint labels
 	const lastDataPoint = $derived(visibleData.length > 0 ? visibleData[visibleData.length - 1] : null);
@@ -233,9 +253,10 @@
 					x2={usableArea.right}
 					y1={yScale(tick)}
 					y2={yScale(tick)}
-					stroke="#e0e0e0"
-					stroke-width="1"
-					stroke-dasharray="3,3"
+					stroke={chartStyles.grid.strokeColor}
+					stroke-width={chartStyles.grid.strokeWidth}
+					stroke-dasharray={chartStyles.grid.strokeDasharray}
+					opacity={chartStyles.grid.opacity}
 				/>
 			{/each}
 		</g>
@@ -247,8 +268,8 @@
 				class="tariff-line line-chinese-row"
 				fill="none"
 				stroke={colors.chinese_row}
-				stroke-width="2"
-				stroke-dasharray="4,4"
+				stroke-width={chartStyles.line.strokeWidthThin}
+				stroke-dasharray={chartStyles.line.strokeDasharray.dashed}
 			/>
 
 			<!-- Chinese tariffs on US (solid) -->
@@ -256,7 +277,7 @@
 				class="tariff-line line-chinese-us"
 				fill="none"
 				stroke={colors.chinese_us}
-				stroke-width="2.5"
+				stroke-width={chartStyles.line.strokeWidth}
 			/>
 
 			<!-- US tariffs on Chinese (solid) -->
@@ -264,7 +285,7 @@
 				class="tariff-line line-us-chinese"
 				fill="none"
 				stroke={colors.us_chinese}
-				stroke-width="2.5"
+				stroke-width={chartStyles.line.strokeWidth}
 			/>
 
 			<!-- US tariffs on ROW (dotted) -->
@@ -272,8 +293,8 @@
 				class="tariff-line line-us-row"
 				fill="none"
 				stroke={colors.us_row}
-				stroke-width="2"
-				stroke-dasharray="4,4"
+				stroke-width={chartStyles.line.strokeWidthThin}
+				stroke-dasharray={chartStyles.line.strokeDasharray.dashed}
 			/>
 		</g>
 
@@ -284,10 +305,10 @@
 				<circle
 					cx={xScale(d.date)}
 					cy={yScale(d.chinese_tariffs_us)}
-					r="4"
+					r={chartStyles.point.radius}
 					fill={colors.chinese_us}
-					stroke="white"
-					stroke-width="1"
+					stroke={chartStyles.point.strokeColor}
+					stroke-width={chartStyles.point.strokeWidth}
 					class="data-point"
 					role="button"
 					tabindex="0"
@@ -300,10 +321,10 @@
 				<circle
 					cx={xScale(d.date)}
 					cy={yScale(d.us_tariffs_chinese)}
-					r="4"
+					r={chartStyles.point.radius}
 					fill={colors.us_chinese}
-					stroke="white"
-					stroke-width="1"
+					stroke={chartStyles.point.strokeColor}
+					stroke-width={chartStyles.point.strokeWidth}
 					class="data-point"
 					role="button"
 					tabindex="0"
@@ -319,56 +340,56 @@
 		<g class="endpoints">
 			<!-- Chinese tariffs on US endpoint -->
 			<circle
-				r="5"
+				r={chartStyles.point.radius + 1}
 				fill={colors.chinese_us}
 				class="endpoint-dot endpoint-chinese-us"
 			/>
 			<text
-				font-size="12"
-				font-weight="600"
+				font-size={chartTypography.fontSize.sm}
+				font-weight={chartTypography.fontWeight.semibold}
 				fill={colors.chinese_us}
 				class="label-chinese-us"
 			></text>
 
 			<!-- US tariffs on Chinese endpoint -->
 			<circle
-				r="5"
+				r={chartStyles.point.radius + 1}
 				fill={colors.us_chinese}
 				class="endpoint-dot endpoint-us-chinese"
 			/>
 			<text
-				font-size="12"
-				font-weight="600"
+				font-size={chartTypography.fontSize.sm}
+				font-weight={chartTypography.fontWeight.semibold}
 				fill={colors.us_chinese}
 				class="label-us-chinese"
 			></text>
 
 			<!-- Chinese tariffs on ROW endpoint -->
 			<circle
-				r="4"
-				fill="white"
+				r={chartStyles.point.radius}
+				fill={chartStyles.point.strokeColor}
 				stroke={colors.chinese_row}
-				stroke-width="2"
+				stroke-width={chartStyles.point.strokeWidth}
 				class="endpoint-dot endpoint-chinese-row"
 			/>
 			<text
-				font-size="12"
-				font-weight="600"
+				font-size={chartTypography.fontSize.sm}
+				font-weight={chartTypography.fontWeight.semibold}
 				fill={colors.chinese_row}
 				class="label-chinese-row"
 			></text>
 
 			<!-- US tariffs on ROW endpoint -->
 			<circle
-				r="4"
-				fill="white"
+				r={chartStyles.point.radius}
+				fill={chartStyles.point.strokeColor}
 				stroke={colors.us_row}
-				stroke-width="2"
+				stroke-width={chartStyles.point.strokeWidth}
 				class="endpoint-dot endpoint-us-row"
 			/>
 			<text
-				font-size="12"
-				font-weight="600"
+				font-size={chartTypography.fontSize.sm}
+				font-weight={chartTypography.fontWeight.semibold}
 				fill={colors.us_row}
 				class="label-us-row"
 			></text>
@@ -387,8 +408,10 @@
 			y={15}
 			x={-(usableArea.top + usableArea.bottom) / 2}
 			text-anchor="middle"
-			font-size="14"
-			font-weight="600"
+			font-size={chartTypography.fontSize.md}
+			font-weight={chartTypography.fontWeight.semibold}
+			fill={chartStyles.axis.labelColor}
+			font-family={chartTypography.fontFamily}
 		>
 			Tariff Rate (%)
 		</text>
@@ -397,8 +420,10 @@
 			y={height - 10}
 			x={(usableArea.left + usableArea.right) / 2}
 			text-anchor="middle"
-			font-size="14"
-			font-weight="600"
+			font-size={chartTypography.fontSize.md}
+			font-weight={chartTypography.fontWeight.semibold}
+			fill={chartStyles.axis.labelColor}
+			font-family={chartTypography.fontFamily}
 		>
 			Date
 		</text>
@@ -406,25 +431,25 @@
 		<!-- Legend -->
 		<g class="legend" transform="translate({usableArea.right + 10}, {usableArea.top})">
 			<g transform="translate(0, 0)">
-				<line x1="0" x2="20" y1="0" y2="0" stroke={colors.chinese_us} stroke-width="2.5" />
-				<text x="25" y="5" font-size="11" fill="#333">Chinese → US</text>
+				<line x1="0" x2="20" y1="0" y2="0" stroke={colors.chinese_us} stroke-width={chartStyles.line.strokeWidth} />
+				<text x="25" y="5" font-size={chartStyles.legend.fontSize} fill={chartColors.neutral.gray700} font-family={chartTypography.fontFamily}>Chinese → US</text>
 			</g>
-			<g transform="translate(0, 20)">
-				<line x1="0" x2="20" y1="0" y2="0" stroke={colors.us_chinese} stroke-width="2.5" />
-				<text x="25" y="5" font-size="11" fill="#333">US → Chinese</text>
+			<g transform="translate(0, {chartStyles.legend.itemHeight})">
+				<line x1="0" x2="20" y1="0" y2="0" stroke={colors.us_chinese} stroke-width={chartStyles.line.strokeWidth} />
+				<text x="25" y="5" font-size={chartStyles.legend.fontSize} fill={chartColors.neutral.gray700} font-family={chartTypography.fontFamily}>US → Chinese</text>
 			</g>
-			<g transform="translate(0, 40)">
-				<line x1="0" x2="20" y1="0" y2="0" stroke={colors.chinese_row} stroke-width="2" stroke-dasharray="4,4" />
-				<text x="25" y="5" font-size="11" fill="#333">Chinese → ROW</text>
+			<g transform="translate(0, {chartStyles.legend.itemHeight * 2})">
+				<line x1="0" x2="20" y1="0" y2="0" stroke={colors.chinese_row} stroke-width={chartStyles.line.strokeWidthThin} stroke-dasharray={chartStyles.line.strokeDasharray.dashed} />
+				<text x="25" y="5" font-size={chartStyles.legend.fontSize} fill={chartColors.neutral.gray700} font-family={chartTypography.fontFamily}>Chinese → ROW</text>
 			</g>
-			<g transform="translate(0, 60)">
-				<line x1="0" x2="20" y1="0" y2="0" stroke={colors.us_row} stroke-width="2" stroke-dasharray="4,4" />
-				<text x="25" y="5" font-size="11" fill="#333">US → ROW</text>
+			<g transform="translate(0, {chartStyles.legend.itemHeight * 3})">
+				<line x1="0" x2="20" y1="0" y2="0" stroke={colors.us_row} stroke-width={chartStyles.line.strokeWidthThin} stroke-dasharray={chartStyles.line.strokeDasharray.dashed} />
+				<text x="25" y="5" font-size={chartStyles.legend.fontSize} fill={chartColors.neutral.gray700} font-family={chartTypography.fontFamily}>US → ROW</text>
 			</g>
 		</g>
 
 		<!-- Title -->
-		<text class="chart-title" x={width / 2} y={margin.top / 2} text-anchor="middle">
+		<text class="chart-title" x={width / 2} y={margin.top / 2} text-anchor="middle" font-size={chartTypography.fontSize.lg} font-weight={chartTypography.fontWeight.bold} fill={chartColors.neutral.gray800} font-family={chartTypography.fontFamily}>
 			US-China Tariff Rates Toward Each Other and Rest of World (ROW)
 		</text>
 		</svg>
@@ -464,30 +489,33 @@
 	}
 
 	.chart-svg {
-		font-family: Arial, sans-serif;
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 		font-size: 12px;
 	}
 
 	.data-point {
 		cursor: pointer;
-		transition: r 0.15s ease;
+		transition: r 0.2s ease, stroke-width 0.2s ease;
 	}
 
 	.data-point:hover {
-		r: 6;
+		r: 7;
+		stroke-width: 2.5;
 	}
 
 	.tooltip {
 		position: absolute;
-		background: white;
-		border: 1px solid #ccc;
-		border-radius: 6px;
-		padding: 8px 12px;
+		background: rgba(255, 255, 255, 0.98);
+		border: 1px solid #d1d5db;
+		border-radius: 8px;
+		padding: 10px 12px;
 		font-size: 12px;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 		pointer-events: none;
 		z-index: 100;
 		white-space: nowrap;
+		min-width: 140px;
 	}
 
 	.tooltip-date {
