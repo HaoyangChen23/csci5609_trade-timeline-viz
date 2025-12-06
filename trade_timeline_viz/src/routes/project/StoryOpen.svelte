@@ -1,18 +1,23 @@
 <script lang="ts">
   import { Scroll } from "$lib";
   import { fly } from "svelte/transition";
+  import { onMount } from "svelte";
   import { base } from "$app/paths";
 
   let progress: number = $state(0);
-  // Use SvelteKit's assets path for static files
-  // Static files are served from root, so combine base with filename
-  const imagePath = base ? `${base}/Story_open.jpg` : '/Story_open.jpg';
+  let imagePath = $state('/Story_open.jpg');
+  
+  onMount(() => {
+    // Set image path with base in browser environment
+    const basePath = base || '';
+    imagePath = basePath ? `${basePath}/Story_open.jpg` : '/Story_open.jpg';
+  });
 </script>
 
-<div class="story-open-wrapper">
+<div class="story-open-wrapper" style="--bg-image-url: url('{imagePath}')">
   <Scroll bind:progress --scrolly-story-width="0">
     <div id="virtual"></div>
-    <div slot="viz" class="header" style="background-image: url('{imagePath}')">
+    <div slot="viz" class="header">
     <div class="content-overlay">
       <h1>The Trade War Timeline</h1>
 
@@ -52,6 +57,7 @@
   }
 
   .header {
+    background-image: var(--bg-image-url);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
