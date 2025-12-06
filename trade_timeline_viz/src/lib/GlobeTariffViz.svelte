@@ -23,6 +23,11 @@
   let showCurrent = $state(true);
 
   onMount(() => {
+    if (!container) {
+      console.warn('GlobeTariffViz: container not ready');
+      return;
+    }
+    
     // Scene setup
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0e27);
