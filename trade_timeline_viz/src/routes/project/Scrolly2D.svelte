@@ -155,7 +155,7 @@
 
     const chartHeight = 500;
     const chartWidth = 900;
-    // Width for charts in the timeline section (right column is larger now)
+    // Width for charts in the timeline section (adjusted to fit grid layout)
     const timelineChartWidth = 750;
 
     // Function to convert scroll progress (0-100) to a date based on timeline data
@@ -423,15 +423,9 @@
 </div>
 <h2>USA inflation rate and import price index (2024-2025)</h2>
 <p>
-    Before the inauguration day of the 47th president, the inflation spike was expected to happen around late summer.
-    And the big market sell-off started with about a final
-    <strong>-21% correction</strong>.
-    The inflation data shows a rebound from around 1.4% April to 3.0% September. However, the cost shock from the tariff
-    is not explicitly shown, with energy and transportation prices rising at the same time. The core PCE (Personal
-    Consumption Expenditures Price Index excluding food and energy) follows a similar pattern, steadily rising from 2.6%
-    to the latest(September) 2.9%, below the 3% threshold, which also reflects a rebound in underlying inflation.
-    Nomura predicts the PCE yoy inflation rate will accelerate substantially this year from the moderate 3.0% to the
-    aggressive 4.5% at the end of this year.
+    This chart tracks three key price indicators: the Consumer Price Index (CPI) inflation rate, Core PCE
+    (Personal Consumption Expenditures excluding food and energy), and the Import Price Index. Together,
+    these metrics reveal how tariffs flow through the economy—from import costs to consumer prices.
 </p>
 
 <Scroll bind:progress={inflationScrollProgress} id="inflation">
@@ -439,11 +433,15 @@
     <div class="info-section">
         <h3>Key Insight</h3>
         <p>
-            Despite mitigation efforts, inflation has rebounded from a low of <strong>1.4% in April</strong> to
-            <strong>3.0% by September</strong>. Core PCE mirrors this trend, rising to <strong>2.9%</strong>.
-            While currently below the critical 3% threshold, risks remain: Nomura predicts inflation could
-            accelerate aggressively to <strong>4.5%</strong> by year-end as the full weight of energy and
-            transportation costs takes effect.
+            Before the inauguration of the 47th president, an inflation spike was anticipated for late summer,
+            triggering a <strong>-21% market correction</strong>. The data confirms this: inflation rebounded
+            from <strong>1.4% in April</strong> to <strong>3.0% by September</strong>. Core PCE follows a
+            similar pattern, rising steadily from 2.6% to <strong>2.9%</strong>—just below the critical 3% threshold.
+        </p>
+        <p>
+            While the direct tariff cost shock is obscured by concurrent energy and transportation price increases,
+            the underlying trend is clear. Nomura predicts PCE inflation will accelerate substantially from
+            the current 3.0% to an aggressive <strong>4.5%</strong> by year-end.
         </p>
     </div>
 
@@ -545,27 +543,29 @@
 </div>
 <h2>Auto sector hit hard</h2>
 <p>
-    The variance analysis below illustrates the protective role of financial hedging. For Hyundai and Kia,
-    <strong>foreign exchange gains (Green)</strong> effectively counterbalanced <strong>tariff costs (Red)</strong>.
-    In contrast, Toyota experienced dual contractions from both factors. Honda exhibited the most severe deterioration,
-    swinging from profitability to a <strong>¥20.6B operating loss</strong> driven by unmitigated exposure to both
-    trade and currency risks.
+    This variance analysis compares how major automakers—Korean (Hyundai, Kia), Japanese (Toyota, Honda),
+    and American (Ford)—have been impacted by tariffs. The chart breaks down changes in operating income
+    by factor: tariff costs (Red), foreign exchange effects (Green), and other operational factors.
 </p>
 
 <Scroll bind:progress={autoIncomeScrollProgress} id="autoIncome">
     <div class="info-section">
         <h3>Key Insight</h3>
         <p>
-            Quarterly disclosures highlight a sharp strategic divergence in how global automakers are navigating the new tariff regime.
-            While trade barriers have universally suppressed operating margins, <strong>Korean OEMs</strong> (Hyundai, Kia) effectively
-            neutralized over <strong>₩1.6 trillion</strong> in combined tariff liabilities through aggressive currency hedging.
-            Conversely, <strong>Japanese manufacturers</strong> (Toyota, Honda) faced compounded headwinds, suffering simultaneous
-            losses from tariff imposition and unfavorable foreign exchange exposure.
+            Quarterly disclosures reveal a sharp strategic divergence. <strong>Korean OEMs</strong> (Hyundai, Kia)
+            effectively neutralized over <strong>₩1.6 trillion</strong> in combined tariff liabilities through
+            aggressive currency hedging—foreign exchange gains (Green) counterbalanced tariff costs (Red).
         </p>
         <p>
-            In the domestic market, <strong>Ford</strong> offered a resilient counterpoint in Q3 2025. Despite a <strong>$700 million</strong>
-            tariff-induced contraction, the firm maintained a stable Adjusted EBIT of <strong>$2.59B</strong>. This stability
-            underscores the capacity of robust pricing power and volume management to offset direct trade policy headwinds.
+            <strong>Japanese manufacturers</strong> faced compounded headwinds. Toyota experienced dual contractions
+            from both tariffs and unfavorable FX exposure. Honda exhibited the most severe deterioration, swinging
+            from profitability to a <strong>¥20.6B operating loss</strong> due to unmitigated exposure to both risks.
+        </p>
+        <p>
+            In the domestic market, <strong>Ford</strong> offered a resilient counterpoint. Despite a
+            <strong>$700 million</strong> tariff-induced contraction in Q3 2025, the firm maintained a stable
+            Adjusted EBIT of <strong>$2.59B</strong>—demonstrating how robust pricing power and volume management
+            can offset direct trade policy headwinds.
         </p>
     </div>
 
@@ -583,16 +583,9 @@
 </div>
 <h2>Reshaping Global Supply Chains: The Soybean Shift</h2>
 <p>
-    Originated in China, soybeans are a critical resource for livestock feed and cooking oil, with China now
-    commanding <strong>60% of the global trade</strong>. To diversify supply, China has heavily invested in
-    Brazilian infrastructure since 2010. Aided by longer growing seasons and lower production costs
-    (<strong>$475/acre</strong> vs. US $530), Brazil has surpassed the US as the world's largest producer.
-</p>
-<p>
-    The trade war accelerated this structural shift. Retaliatory tariffs triggered a <strong>23% drop</strong>
-    in US exports, straining American farmers. While the bans were eventually lifted, the market has
-    permanently adjusted—purchasing US soy is now often seen as a <strong>political choice</strong> rather
-    than an economic necessity.
+    This stacked area chart tracks China's soybean imports by source country over time. Soybeans—critical
+    for livestock feed and cooking oil—represent one of the clearest examples of how trade policy can
+    permanently reshape global supply chains.
 </p>
 
 <Scroll bind:progress={soybeanScrollProgress} id="soybean">
@@ -600,10 +593,20 @@
     <div class="info-section">
         <h3>Key Insight</h3>
         <p>
-            The chart illustrates this takeover. Note the sharp divergence in <strong>2018</strong>:
-            US exports (Blue) plunged to <strong>16.8M tons</strong> while Brazil's (Green) surged to
-            <strong>65.5M tons</strong>. By 2024, Brazil supplies nearly <strong>3.5x more</strong>
-            soybeans to China than the US, cementing its status as the dominant supplier.
+            China commands <strong>60% of global soybean trade</strong>, and has strategically diversified
+            its supply since 2010 through heavy investment in Brazilian infrastructure. Brazil's advantages—longer
+            growing seasons and lower production costs (<strong>$475/acre</strong> vs. US $530)—helped it
+            surpass the US as the world's largest producer.
+        </p>
+        <p>
+            The trade war accelerated this structural shift. Note the sharp divergence in <strong>2018</strong>:
+            retaliatory tariffs triggered a <strong>23% drop</strong> in US exports, with US shipments (Blue)
+            plunging to <strong>16.8M tons</strong> while Brazil's (Green) surged to <strong>65.5M tons</strong>.
+        </p>
+        <p>
+            By 2024, Brazil supplies nearly <strong>3.5x more</strong> soybeans to China than the US. While
+            bans were eventually lifted, the market has permanently adjusted—purchasing US soy is now often
+            seen as a <strong>political choice</strong> rather than an economic necessity.
         </p>
     </div>
 
@@ -622,26 +625,32 @@
 
 <h2>Foreign Direct Investment & Supply Chain Reshoring</h2>
 <p>
-    To offset tariff risks, companies are aggressively onshoring. Under the Trump 2.0 administration,
-    new projects rose <strong>17.4%</strong> and pledged capital investment surged <strong>225.8% to $253 billion</strong>,
-    led by Semiconductors, Renewable Energy, and Communications. Secretary Scott Bessent has framed these tariffs as a
-    "carrot and stick" to force this relocation.
-</p>
-<p>
-    However, barriers persist. "Deep-Tier Diversification" often hits the wall of <strong>"Chokepoint Dependence"</strong>
-    where China retains upstream monopolies on critical minerals. Furthermore, regulatory disconnects—exemplified
-    by the 2025 <strong>immigration raid on the Hyundai-LG plant</strong>—have shaken investor confidence,
-    contributing to a <strong>70% profit plunge</strong> for Korean Air as business travel stalled.
+    This map displays announced foreign direct investments in US manufacturing, showing facility locations,
+    investment amounts, and industry sectors. It visualizes the geographic distribution of reshoring efforts
+    as companies respond to the new tariff environment.
 </p>
 
 <Scroll bind:progress={investmentMapScrollProgress} id="investmentMap">
     <div class="info-section">
         <h3>Key Insight</h3>
         <p>
-            Despite these frictions, major Asian tech giants have committed over <strong>$100 billion</strong>
-            to US manufacturing. The map highlights this historic shift: TSMC's <strong>$40B</strong> Arizona fabs
-            and Samsung's <strong>$17B</strong> Texas facility represent the largest technology investments in US history,
-            building the physical foundation for America's supply chain independence.
+            To offset tariff risks, companies are aggressively onshoring. Under the Trump 2.0 administration,
+            new projects rose <strong>17.4%</strong> and pledged capital investment surged
+            <strong>225.8% to $253 billion</strong>, led by Semiconductors, Renewable Energy, and Communications.
+            Secretary Scott Bessent has framed these tariffs as a "carrot and stick" to force this relocation.
+        </p>
+        <p>
+            Major Asian tech giants have committed over <strong>$100 billion</strong> to US manufacturing.
+            TSMC's <strong>$40B</strong> Arizona fabs and Samsung's <strong>$17B</strong> Texas facility
+            represent the largest technology investments in US history, building the physical foundation
+            for America's supply chain independence.
+        </p>
+        <p>
+            However, barriers persist. "Deep-Tier Diversification" often hits the wall of
+            <strong>"Chokepoint Dependence"</strong> where China retains upstream monopolies on critical minerals.
+            Regulatory disconnects—exemplified by the 2025 <strong>immigration raid on the Hyundai-LG plant</strong>—have
+            shaken investor confidence, contributing to a <strong>70% profit plunge</strong> for Korean Air
+            as business travel stalled.
         </p>
     </div>
 
@@ -922,7 +931,7 @@
         margin: var(--spacing-2xl) 0;
         min-height: 80vh;
         padding: var(--spacing-lg);
-        max-width: 1400px;
+        max-width: 1800px;
         margin-left: auto;
         margin-right: auto;
         background: linear-gradient(135deg, var(--color-gray-50) 0%, #ffffff 100%);

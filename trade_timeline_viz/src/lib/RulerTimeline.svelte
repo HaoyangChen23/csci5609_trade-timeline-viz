@@ -141,8 +141,9 @@
 
 							{#if links.length > 0}
 								<div class="event-links">
+									<span class="links-label">Sources:</span>
 									{#each links as link}
-										<a href={link.url} target="_blank" rel="noopener noreferrer" class="link-button">
+										<a href={link.url} target="_blank" rel="noopener noreferrer" class="link-button" title={link.text}>
 											{link.text}
 										</a>
 									{/each}
@@ -379,6 +380,14 @@
 		flex-wrap: wrap;
 		gap: 6px;
 		margin-top: 10px;
+		align-items: center;
+	}
+
+	.links-label {
+		font-size: 11px;
+		font-weight: 600;
+		color: #666;
+		margin-right: 4px;
 	}
 
 	.link-button {
@@ -390,6 +399,10 @@
 		border-radius: 4px;
 		font-size: 11px;
 		transition: background 0.2s ease;
+		max-width: 200px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.link-button:hover {

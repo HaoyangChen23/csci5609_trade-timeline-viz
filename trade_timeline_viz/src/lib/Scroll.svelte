@@ -160,7 +160,7 @@
   .scrolly {
     position: relative;
     display: grid;
-    grid-template-columns: var(--scrolly-story-width, 1fr) var(
+    grid-template-columns: var(--scrolly-story-width, 0.8fr) var(
         --scrolly-viz-width,
         1fr
       );
@@ -181,7 +181,7 @@
 
   @container style(--scrolly-layout: viz-first) {
     .scrolly {
-      grid-template-columns: var(--scrolly-viz-width, 1fr) var(
+      grid-template-columns: var(--scrolly-viz-width, 1.2fr) var(
           --scrolly-story-width,
           1fr
         );
