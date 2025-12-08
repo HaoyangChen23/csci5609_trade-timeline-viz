@@ -5,9 +5,10 @@ This project is an interactive, data-driven visualization that narratively explo
 
 The main visualization is a scrollytelling experience that guides the user through different datasets related to the 2018-2025 US-China trade war and a fictional "Tariff 2.0" scenario in 2025.
 
-## 🔗 Project URL
+## 🔗 Project Links
 
-Project repository: https://github.com/HaoyangChen23/csci5609_trade-timeline-viz
+- **Live Demo**: https://haoyangchen23.github.io/csci5609_trade-timeline-viz/project
+- **Repository**: https://github.com/HaoyangChen23/csci5609_trade-timeline-viz
 
 ## ✨ Features
 
