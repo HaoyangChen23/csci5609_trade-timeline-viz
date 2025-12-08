@@ -21,7 +21,7 @@
     <div id="virtual"></div>
     <div slot="viz" class="header" bind:this={headerElement}>
     <div class="content-overlay">
-      <h1>The Trade War Timeline</h1>
+      <h1>Trump Tariff 2.0: Trade Impacts</h1>
 
       {#if progress > 20}
         <p
@@ -31,7 +31,7 @@
             delay: 200,
           }}
         >
-          [Explore the evolution of US-China trade relations from 2018 to 2025 through interactive data visualizations]
+          [Scroll to explore interactive visualizations about how the Trump Tariff 2.0 affects trade in the US and the world.]
         </p>
       {/if}
 
@@ -41,7 +41,7 @@
           y: 50,
           delay: 300,
         }}>
-          [Scroll to discover how tariffs shaped global commerce]
+          
         </p>
       {/if}
     </div>
