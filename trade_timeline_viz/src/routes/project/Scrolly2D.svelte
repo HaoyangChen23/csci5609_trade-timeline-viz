@@ -679,14 +679,16 @@
     <h2>References</h2>
     
     <div class="references-list">
-        <p>The US-China Tariff Rate Trends data was compiled from the Peterson Institute for International Economics.</p>
-        <p>The Front-loading Effect at U.S. Ports data was from the Department of Transportation; Data available through August 2025.</p>
-        <p>The USA inflation rate and import price index data was from the Bureau of Labor Statistics (BLS) and Bureau of Economic Analysis (BEA).</p>
-        <p>The Manufacturing PMI Trends data was from ISM.</p>
-        <p>The U.S. Trade Balance Trends data was from the United States International Trade Commission.</p>
-        <p>The Auto sector income data was from Company Filings.</p>
-        <p>The Foreign Direct Investment & Supply Chain Reshoring data was from Reuters reports and company statements.</p>
-        <p>The Soybean Shift data was from the American Soybean Association and Trade Data Monitor.</p>
+        <p>Bureau of Labor Statistics. (2025). Consumer price index and import price data. U.S. Department of Labor. <a href="https://www.bls.gov/" target="_blank" rel="noopener noreferrer">https://www.bls.gov/</a></p>
+        <p>Bureau of Economic Analysis. (2025). Personal consumption expenditures (PCE) and macroeconomic indicators. U.S. Department of Commerce. <a href="https://www.bea.gov/" target="_blank" rel="noopener noreferrer">https://www.bea.gov/</a></p>
+        <p>United States International Trade Commission. (2025). U.S. trade balance reports and datasets. <a href="https://www.usitc.gov/" target="_blank" rel="noopener noreferrer">https://www.usitc.gov/</a></p>
+        <p>Department of Transportation. (2025). Port throughput statistics (TEU). U.S. Department of Transportation. <a href="https://www.transportation.gov/" target="_blank" rel="noopener noreferrer">https://www.transportation.gov/</a></p>
+        <p>Institute for Supply Management. (2025). Manufacturing PMI data. <a href="https://www.ismworld.org/" target="_blank" rel="noopener noreferrer">https://www.ismworld.org/</a></p>
+        <p>Peterson Institute for International Economics. (2025). U.S.–China tariff timelines and trade analysis. <a href="https://www.piie.com/" target="_blank" rel="noopener noreferrer">https://www.piie.com/</a></p>
+        <p>American Soybean Association. (2025). U.S. soybean production and export statistics. <a href="https://soygrowers.com/" target="_blank" rel="noopener noreferrer">https://soygrowers.com/</a></p>
+        <p>Trade Data Monitor. (2025). Global soybean trade data. <a href="https://tradedatamonitor.com/" target="_blank" rel="noopener noreferrer">https://tradedatamonitor.com/</a></p>
+        <p>Reuters. (2025). Industry and foreign investment reporting. <a href="https://www.reuters.com/" target="_blank" rel="noopener noreferrer">https://www.reuters.com/</a></p>
+        <p>Company filings (Toyota, Honda, Hyundai, Kia, Ford). (2024–2025). Quarterly and annual earnings reports. Retrieved from official corporate investor-relations websites.</p>
     </div>
 </div>
 
@@ -845,6 +847,17 @@
         margin-bottom: var(--spacing-lg);
         line-height: 1.8;
         color: var(--color-gray-700);
+    }
+
+    .references-list a {
+        color: var(--color-primary);
+        text-decoration: none;
+        transition: var(--transition-fast);
+    }
+
+    .references-list a:hover {
+        color: var(--color-primary-dark);
+        text-decoration: underline;
     }
 
     .acknowledgments-section {

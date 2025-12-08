@@ -21,10 +21,41 @@
   let container: HTMLDivElement;
   let tooltip: HTMLDivElement;
   let showCurrent = $state(true);
+  let webglError = $state(false);
+
+  // Check WebGL support before mounting
+  function checkWebGLSupport(): boolean {
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      return !!gl;
+    } catch (e) {
+      return false;
+    }
+  }
 
   onMount(() => {
+    console.log('GlobeTariffViz: onMount called, data length:', data?.length || 0);
+    
     if (!container) {
       console.warn('GlobeTariffViz: container not ready');
+      return;
+    }
+
+    // Check WebGL support first
+    if (!checkWebGLSupport()) {
+      console.error('WebGL is not supported');
+      webglError = true;
+      container.innerHTML = `
+        <div style="padding: 40px; text-align: center; color: var(--color-gray-700);">
+          <h3 style="margin-bottom: 16px; color: var(--color-gray-900);">WebGL Not Available</h3>
+          <p style="margin-bottom: 8px;">The 3D globe visualization requires WebGL support.</p>
+          <p style="margin-bottom: 16px;">Please enable WebGL in your browser settings or try a different browser.</p>
+          <p style="font-size: 14px; color: var(--color-gray-600);">
+            Supported browsers: Chrome, Firefox, Edge, Safari (with WebGL enabled)
+          </p>
+        </div>
+      `;
       return;
     }
     
@@ -41,11 +72,59 @@
     );
     camera.position.z = 3;
 
-    // WebGL Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    container.appendChild(renderer.domElement);
+    // WebGL Renderer with error handling
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      
+      // Check if context was actually created
+      const gl = renderer.getContext();
+      if (!gl) {
+        throw new Error('WebGL context is null');
+      }
+      
+      // Additional check: try to use the context
+      const testShader = gl.createShader(gl.VERTEX_SHADER);
+      if (!testShader) {
+        throw new Error('WebGL context is not functional');
+      }
+      gl.deleteShader(testShader);
+      
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio to avoid issues
+      container.appendChild(renderer.domElement);
+      
+      // Listen for WebGL context lost events
+      const canvas = renderer.domElement;
+      canvas.addEventListener('webglcontextlost', (event) => {
+        event.preventDefault();
+        console.error('WebGL context lost');
+        webglError = true;
+      });
+      
+      canvas.addEventListener('webglcontextrestored', () => {
+        console.log('WebGL context restored');
+        webglError = false;
+      });
+      
+      console.log('GlobeTariffViz: WebGL renderer created successfully');
+    } catch (error) {
+      console.error('Failed to create WebGL renderer:', error);
+      webglError = true;
+      container.innerHTML = `
+        <div style="padding: 40px; text-align: center; color: var(--color-gray-700); background: var(--color-gray-50); border-radius: 8px;">
+          <h3 style="margin-bottom: 16px; color: var(--color-gray-900);">WebGL Not Available</h3>
+          <p style="margin-bottom: 8px;">The 3D globe visualization requires WebGL support, which is currently disabled or unavailable.</p>
+          <p style="margin-bottom: 16px; font-size: 14px; color: var(--color-gray-600);">
+            This may be due to browser settings, hardware limitations, or security restrictions.
+          </p>
+          <p style="font-size: 13px; color: var(--color-gray-500);">
+            Please enable WebGL in your browser settings or try a different browser.
+          </p>
+        </div>
+      `;
+      return;
+    }
 
     // OrbitControls for mouse interaction
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -66,7 +145,7 @@
         console.log('Earth texture loaded successfully');
       },
       undefined,
-      (error) => {
+      (error: Error) => {
         console.warn('Could not load earth texture, using fallback colors', error);
       }
     );
@@ -131,6 +210,7 @@
 
     // Store country coordinates from GeoJSON
     const countryCoords: Record<string, [number, number]> = {};
+    let coordinatesLoaded = $state(false);
 
     // Load and draw country boundaries from GeoJSON
     async function loadCountryBoundaries() {
@@ -186,8 +266,17 @@
           }
         });
 
-        // After loading coordinates, create bars
-        updateBars();
+        // Mark coordinates as loaded
+        coordinatesLoaded = true;
+        console.log('GlobeTariffViz: Coordinates loaded, total countries:', Object.keys(countryCoords).length);
+        
+        // After loading coordinates, create bars if data is ready
+        if (data && data.length > 0) {
+          console.log('GlobeTariffViz: Data available, calling updateBars');
+          updateBars();
+        } else {
+          console.warn('GlobeTariffViz: Coordinates loaded but data not ready yet');
+        }
       } catch (error) {
         console.warn('Could not load country boundaries:', error);
       }
@@ -233,16 +322,32 @@
       barGroup.clear();
       barToCountry.clear();
 
+      if (!data || data.length === 0) {
+        console.warn('GlobeTariffViz: No data available for updateBars');
+        return;
+      }
+
+      if (Object.keys(countryCoords).length === 0) {
+        console.warn('GlobeTariffViz: No country coordinates available for updateBars');
+        return;
+      }
+
+      console.log('GlobeTariffViz: updateBars called with', data.length, 'countries');
+
       // Find max tariff for scaling across BOTH datasets for accurate comparison
       const allTariffValues = data
         .flatMap(d => [d.Current_tariff_total, d.Pre2025_tariff_total])
         .filter(v => !isNaN(v) && v > 0);
       const maxTariff = Math.max(...allTariffValues, 1);
 
+      let barsCreated = 0;
       // Create bars for each country
       data.forEach(country => {
         const coords = countryCoords[country.Country_ISO3];
-        if (!coords) return;
+        if (!coords) {
+          console.warn(`GlobeTariffViz: No coordinates for ${country.Country_ISO3}`);
+          return;
+        }
 
         const tariffValue = showCurrent
           ? country.Current_tariff_total
@@ -280,12 +385,22 @@
 
         barGroup.add(bar);
         barToCountry.set(bar, country);
+        barsCreated++;
       });
+      
+      console.log(`GlobeTariffViz: Created ${barsCreated} bars out of ${data.length} countries`);
     }
 
     // Re-create bars when toggle changes or data changes
     $effect(() => {
-      if (showCurrent !== undefined && data.length > 0) {
+      console.log('GlobeTariffViz: Effect triggered', {
+        showCurrent,
+        dataLength: data?.length || 0,
+        coordinatesLoaded
+      });
+      
+      if (showCurrent !== undefined && data && data.length > 0 && coordinatesLoaded) {
+        console.log('GlobeTariffViz: Effect calling updateBars');
         updateBars();
       }
     });
@@ -334,7 +449,9 @@
       }
     }
 
-    renderer.domElement.addEventListener('mousemove', onMouseMove);
+    if (renderer && renderer.domElement) {
+      renderer.domElement.addEventListener('mousemove', onMouseMove);
+    }
 
     // Animation loop
     function animate() {
@@ -342,24 +459,33 @@
       controls.update();
       renderer.render(scene, camera);
     }
+    console.log('GlobeTariffViz: Starting animation loop');
     animate();
 
     // Handle window resize
     function handleResize() {
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
+      if (renderer) {
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+      }
     }
     window.addEventListener('resize', handleResize);
 
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
-      renderer.domElement.removeEventListener('mousemove', onMouseMove);
-      controls.dispose();
-      renderer.dispose();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
+      if (renderer && renderer.domElement) {
+        renderer.domElement.removeEventListener('mousemove', onMouseMove);
+      }
+      if (controls) {
+        controls.dispose();
+      }
+      if (renderer) {
+        renderer.dispose();
+        if (container.contains(renderer.domElement)) {
+          container.removeChild(renderer.domElement);
+        }
       }
     };
   });
